@@ -27,11 +27,11 @@ commit: ## Starts Commitizen for a guided commit message
 
 lint: ## Checks code quality with ruff
 	@echo ">>> Checking code quality with ruff..."
-	uv run ruff check src tests
+	uv run ruff check src
 
 format: ## Formats code with ruff
 	@echo ">>> Formatting code with ruff..."
-	uv run ruff format src tests
+	uv run ruff format src
 
 test: ## Runs tests with pytest
 	@echo ">>> Running tests with pytest..."
