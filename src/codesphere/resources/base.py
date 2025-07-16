@@ -39,11 +39,14 @@ class ResourceBase:
         endpoint = operation.endpoint_template.format(**format_args)
 
         params = kwargs.get("params")
+        json_data_obj = kwargs.get("data")
         payload = None
 
-        if operation.input_model:
+        if json_data_obj and isinstance(json_data_obj, BaseModel):
+            payload = json_data_obj.model_dump(exclude_none=True)
+        elif operation.input_model:
             input_data = operation.input_model(**kwargs)
-            payload = input_data.model_dump()
+            payload = input_data.model_dump(exclude_none=True)
 
         response = await self._http_client.request(
             method=operation.method, endpoint=endpoint, json=payload, params=params
@@ -53,6 +56,10 @@ class ResourceBase:
             return None
 
         json_response = response.json()
+
+        # print("--- RAW API RESPONSE ---")
+        # pprint.pprint(json_response)
+        # print("------------------------")
 
         origin = get_origin(operation.response_model)
         if origin is list or origin is List:

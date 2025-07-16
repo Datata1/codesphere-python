@@ -27,7 +27,7 @@ commit: ## Starts Commitizen for a guided commit message
 
 lint: ## Checks code quality with ruff
 	@echo ">>> Checking code quality with ruff..."
-	uv run ruff check src
+	uv run ruff check src --fix
 
 format: ## Formats code with ruff
 	@echo ">>> Formatting code with ruff..."
