@@ -1,3 +1,9 @@
+## v0.2.0 (2025-07-16)
+
+### Feat
+
+- **codesphere/workspace**: add workspace resources
+
 ## v0.1.1 (2025-07-16)
 
 ### Fix
