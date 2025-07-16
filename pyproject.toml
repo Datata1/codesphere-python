@@ -108,5 +108,5 @@ skips = ["B101"]
 
 [project.urls]
 Homepage = "https://codesphere.com/"
-Repository = "https://github.com/Datata1/codesphere-python-sdk"
-"Bug Tracker" = "https://github.com/Datata1/codesphere-python-sdk/issues"
+Repository = "https://github.com/Datata1/codesphere-python"
+"Bug Tracker" = "https://github.com/Datata1/codesphere-python/issues"
