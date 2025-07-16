@@ -1,0 +1,107 @@
+name: Python backend server tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, draft]
+    paths:
+      - 'src/codesphere_sdk/**'
+      - '.github/workflows/backend-app.yml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install uv package manager
+      uses: astral-sh/setup-uv@v6
+      with:
+        activate-environment: true
+
+    - name: Install dependencies using uv
+      run: |
+        uv sync
+      shell: bash
+
+    - name: Run Bandit security check on backend code
+      id: bandit_check
+      run: |
+        echo "Running Bandit security check..."
+        set +e
+        bandit -r . -c pyproject.toml --format=custom --msg-template "{abspath}:{line}: {test_id}[{severity}]: {msg}" -o bandit-results.txt
+        cat bandit-results.txt
+        BANDIT_EXIT_CODE=$?
+        set -e
+        echo "Bandit scan finished. Exit code: $BANDIT_EXIT_CODE"
+        echo "BANDIT_EXIT_CODE=${BANDIT_EXIT_CODE}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Prepare Bandit comment body
+      id: prep_bandit_comment
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "Preparing Bandit comment body..."
+        COMMENT_BODY_FILE="bandit-comment-body.md"
+        echo "COMMENT_BODY_FILE=${COMMENT_BODY_FILE}" >> $GITHUB_ENV
+
+        echo "### 🛡️ Bandit Security Scan Results" > $COMMENT_BODY_FILE
+        echo "" >> $COMMENT_BODY_FILE
+        echo "" >> $COMMENT_BODY_FILE
+        echo "" >> $COMMENT_BODY_FILE
+
+        if [ -s backend/bandit-results.txt ]; then
+          echo "\`\`\`text" >> $COMMENT_BODY_FILE
+          cat backend/bandit-results.txt >> $COMMENT_BODY_FILE
+          echo "\`\`\`" >> $COMMENT_BODY_FILE
+        else
+          echo "✅ No security issues found by Bandit." >> $COMMENT_BODY_FILE
+        fi
+      shell: bash
+
+    - name: Find Comment
+      uses: peter-evans/find-comment@v3
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: Bandit Security Scan Results
+
+    - name: Post Bandit results as PR comment
+      if: github.event_name == 'pull_request' && always()
+      uses: peter-evans/create-or-update-comment@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: ${{ github.repository }}
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        body-file: ${{ env.COMMENT_BODY_FILE }}
+        edit-mode: replace
+
+    - name: Run tests with pytest using uv
+      run: |
+        pytest --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html --cov=. | tee pytest-coverage.txt
+      shell: bash
+
+    - name: Pytest coverage comment
+      if: github.event_name == 'pull_request' && always()
+      uses: MishaKav/pytest-coverage-comment@main
+      with:
+        unique-id-for-comment: coverage-report
+        pytest-xml-coverage-path: coverage.xml
+        pytest-coverage-path: pytest-coverage.txt
+        junitxml-path: junit/test-results.xml
+        title: Pytest Coverage Report
+        junitxml-title: Test Execution Summary
+
+    - name: Minimize uv cache
+      run: uv cache prune --ci
