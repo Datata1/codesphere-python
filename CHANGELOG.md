@@ -1,3 +1,9 @@
+## v0.1.1 (2025-07-16)
+
+### Fix
+
+- **.github/ci.yml**: fix trigger condition
+
 ## v0.1.0 (2025-07-16)
 
 ### Feat
