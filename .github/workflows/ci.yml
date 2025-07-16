@@ -1,11 +1,11 @@
-name: Python backend server tests
+name: Python tests
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, draft]
     paths:
-      - 'src/codesphere_sdk/**'
-      - '.github/workflows/backend-app.yml'
+      - 'src/codesphere/**'
+      - '.github/workflows/ci.yml'
 
 permissions:
   contents: write

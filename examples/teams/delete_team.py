@@ -1,17 +1,21 @@
 import asyncio
-import os
 import pprint
-from codesphere import CodesphereClient
+
+from codesphere import CodesphereSDK
 
 
-async def main(team_id: int, api_token: str = ""):
-    api_token = api_token or os.getenv("CS_TOKEN")
+async def main():
+    try:
+        async with CodesphereSDK() as sdk:
+            team_to_delete = await sdk.teams.get(team_id="<id>")
+            print("\n--- Details of the team to be deleted ---")
+            pprint.pprint(team_to_delete.model_dump())
+            await team_to_delete.delete()
+            print(f"Team with ID {team_to_delete.id} was successfully deleted.")
 
-    async with CodesphereClient(api_token) as client:
-        status = await client.teams.teams_delete_team(team_id=team_id)
-
-    pprint.pprint(status)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main("insert here teamid ro delete"))
+    asyncio.run(main())

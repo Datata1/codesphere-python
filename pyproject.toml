@@ -1,7 +1,7 @@
 [project]
 name = "codesphere"
 
-version = "0.0.4"
+version = "0.1.1"
 description = "Use Codesphere within python scripts."
 readme = "README.md"
 license = { file="LICENSE" }
@@ -12,6 +12,7 @@ requires-python = ">=3.12.9"
 dependencies = [
     "aiohttp>=3.12.13",
     "aiohttp-retry>=2.9.1",
+    "httpx>=0.28.1",
     "pydantic>=2.11.7",
     "python-dateutil>=2.9.0.post0",
     "typing-extensions>=4.14.0",

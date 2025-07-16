@@ -1,22 +1,20 @@
 import asyncio
-import os
 import pprint
-from codesphere import CodesphereClient, Team
-from codesphere.models import TeamsCreateTeamRequest
+
+from codesphere import CodesphereSDK
 
 
-async def main(api_token: str = ""):
-    api_token = api_token or os.getenv("CS_TOKEN")
+async def main():
+    try:
+        async with CodesphereSDK() as sdk:
+            created_team = await sdk.teams.create(name="hello", dc=2)
+            print("\n--- Details for the created team ---")
+            pprint.pprint(created_team.model_dump())
 
-    request_args = TeamsCreateTeamRequest(
-        name="Test Team",
-        dc=2,  # data center 2 => FRA
-    )
+            print(f"Team ID: {created_team.id}, Name: {created_team.name}")
 
-    async with CodesphereClient(api_token) as client:
-        team: Team = await client.teams.teams_create_team(request_args)
-
-    pprint.pprint(team.model_dump())
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
