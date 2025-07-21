@@ -1,7 +1,7 @@
 [project]
 name = "codesphere"
 
-version = "0.2.0"
+version = "0.2.1"
 description = "Use Codesphere within python scripts."
 readme = "README.md"
 license = { file="LICENSE" }
