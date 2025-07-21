@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/codesphere/**'
       - '.github/workflows/ci.yml'
+      - 'tests/**'
 
 permissions:
   contents: write
