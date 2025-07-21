@@ -8,7 +8,7 @@ help: ## Shows a help message with all available commands
 install: ## Sets up the development environment
 	@echo ">>> Setting up the development environment..."
 	@echo "1. Creating virtual environment with uv..."
-	uv venv
+	uv venv --python 3.12.9
 	@echo "2. Installing all dependencies (including 'dev')..."
 	uv pip install -e '.[dev]'
 	@echo "3. Installing git hooks with pre-commit..."
