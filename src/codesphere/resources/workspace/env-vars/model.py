@@ -1,6 +1,6 @@
 from __future__ import annotations
-from pydantic import BaseModel, PrivateAttr, parse_obj_as
-from typing import Optional, List, TYPE_CHECKING, Union, Dict
+from pydantic import BaseModel, PrivateAttr
+from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ...client import APIHttpClient
@@ -88,47 +88,3 @@ class Workspace(BaseModel):
 
         response = await self._http_client.get(f"/workspaces/{self.id}/status")
         return WorkspaceStatus.model_validate(response.json())
-
-    async def get_env_vars(self) -> list[EnvVarPair]:
-        """Fetches all environment variables for this workspace."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-
-        response = await self._http_client.get(f"/workspaces/{self.id}/env-vars")
-        return parse_obj_as(list[EnvVarPair], response.json())
-
-    async def set_env_vars(
-        self, env_vars: Union[List[EnvVarPair], List[Dict[str, str]]]
-    ) -> None:
-        """
-        Sets or updates environment variables for this workspace.
-        This operation replaces all existing variables with the provided list.
-        Accepts either a list of EnvVarPair models or a list of dictionaries.
-        """
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-
-        json_payload = []
-        if env_vars and isinstance(env_vars[0], EnvVarPair):
-            json_payload = [var.model_dump() for var in env_vars]
-        else:
-            json_payload = env_vars
-
-        await self._http_client.put(
-            f"/workspaces/{self.id}/env-vars", json=json_payload
-        )
-
-    async def delete_env_vars(
-        self, var_names: Union[List[str], List[EnvVarPair]]
-    ) -> None:
-        """Deletes specific environment variables from this workspace."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-
-        payload = []
-        if var_names and isinstance(var_names[0], EnvVarPair):
-            payload = [var.name for var in var_names]
-        else:
-            payload = var_names
-
-        await self._http_client.delete(f"/workspaces/{self.id}/env-vars", json=payload)

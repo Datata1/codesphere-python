@@ -23,8 +23,11 @@ class APIHttpClient:
             setattr(self, method, partial(self.request, method.upper()))
 
     async def __aenter__(self):
+        timeout_config = httpx.Timeout(10.0, read=30.0)
         self.client = httpx.AsyncClient(
-            base_url=self._base_url, headers={"Authorization": f"Bearer {self._token}"}
+            base_url=self._base_url,
+            headers={"Authorization": f"Bearer {self._token}"},
+            timeout=timeout_config,
         )
         return self
 
