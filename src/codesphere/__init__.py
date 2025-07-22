@@ -2,6 +2,7 @@
 from .client import APIHttpClient
 from .resources.team.resources import TeamsResource
 from .resources.workspace.resources import WorkspacesResource
+from .resources.metadata.resources import MetadataResource
 from .resources.workspace.models import (
     Workspace,
     WorkspaceCreate,
@@ -22,6 +23,7 @@ class CodesphereSDK:
 
         self.teams = TeamsResource(self._http_client)
         self.workspaces = WorkspacesResource(self._http_client)
+        self.metadata = MetadataResource(self._http_client)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
