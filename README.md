@@ -14,13 +14,10 @@
   <a href="https://github.com/Datata1/codesphere-python/actions/workflows/publish.yml">
     <img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/datata1/codesphere-python-sdk/publish.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white">
   </a>
-  <a href="[LINK_TO_YOUR_CODECOV_REPORT_IF_ANY]">
-    <img alt="Code Coverage" src="https://img.shields.io/codecov/c/github/datata1/codesphere-python-sdk.svg?style=flat-square&logo=codecov&logoColor=white">
-  </a>
   <a href="https://pypi.org/project/codesphere/">
     <img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/codesphere.svg?style=flat-square&logo=python&logoColor=white">
   </a>
-  <a href="[LINK_TO_YOUR_DOCUMENTATION]">
+  <a href="https://github.com/Datata1/codesphere-python/tree/main/examples">
     <img alt="Documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
   </a>
   <a href="https://github.com/Datata1/codesphere-python/releases/latest">
