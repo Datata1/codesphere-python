@@ -1,3 +1,9 @@
+## v0.4.0 (2025-07-22)
+
+### Feat
+
+- **src/codesphere/resources/workspace/env-vars**: support env-vars endpoints of public api
+
 ## v0.3.0 (2025-07-22)
 
 ### Feat
