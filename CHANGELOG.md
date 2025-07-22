@@ -1,3 +1,9 @@
+## v0.3.0 (2025-07-22)
+
+### Feat
+
+- **src/resources/metadata**: implement metadata endpoints
+
 ## v0.2.3 (2025-07-21)
 
 ### Fix
