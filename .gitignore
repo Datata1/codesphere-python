@@ -16,5 +16,6 @@ wheels/
 .venv/
 venv/
 env/
+*.env
 
 .pytest_cache

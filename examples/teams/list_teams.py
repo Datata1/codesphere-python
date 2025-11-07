@@ -7,9 +7,8 @@ async def main():
     try:
         async with CodesphereSDK() as sdk:
             teams = await sdk.teams.list()
-            print(f"Found {len(teams)} teams:")
             for team in teams:
-                print(f"Team ID: {team.id}, Name: {team.name}")
+                print(team.model_dump_json(indent=2))
 
     except Exception as e:
         print(f"An error occurred: {e}")

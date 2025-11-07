@@ -26,12 +26,6 @@ class TeamBase(BaseModel):
     role: Optional[int] = None
 
 
-class TeamInList(TeamBase):
-    """Represents a team as it appears in the list response."""
-
-    role: int
-
-
 class Team(TeamBase):
     """
     Represents a complete, single team object (detail view).

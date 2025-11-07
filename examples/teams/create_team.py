@@ -1,18 +1,14 @@
 import asyncio
-import pprint
-
-from codesphere import CodesphereSDK
+from codesphere import CodesphereSDK, TeamCreate
 
 
 async def main():
     try:
         async with CodesphereSDK() as sdk:
-            created_team = await sdk.teams.create(name="hello", dc=2)
+            newTeam = TeamCreate(name="test", dc=2)
+            created_team = await sdk.teams.create(data=newTeam)
             print("\n--- Details for the created team ---")
-            pprint.pprint(created_team.model_dump())
-
-            print(f"Team ID: {created_team.id}, Name: {created_team.name}")
-
+            print(created_team.model_dump_json(indent=2))
     except Exception as e:
         print(f"An error occurred: {e}")
 
