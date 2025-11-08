@@ -132,3 +132,12 @@ class Workspace(BaseModel):
             payload = var_names
 
         await self._http_client.delete(f"/workspaces/{self.id}/env-vars", json=payload)
+
+    async def execute_command():
+        pass
+
+    async def git_pull():
+        pass
+
+    async def git_head():
+        pass
