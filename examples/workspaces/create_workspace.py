@@ -21,7 +21,7 @@ async def main():
         created_workspace = await sdk.workspaces.create(data=workspace_data)
 
         print("\n--- Details of successfully created workspace ---")
-        pprint.pprint(created_workspace.model_dump())
+        pprint.pprint(created_workspace.model_dump_json())
 
 
 if __name__ == "__main__":
