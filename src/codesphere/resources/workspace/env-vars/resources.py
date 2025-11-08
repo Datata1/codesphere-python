@@ -1,5 +1,5 @@
 from typing import List
-from ..base import ResourceBase, APIOperation
+from ....core import ResourceBase, APIOperation
 from .models import Workspace, WorkspaceCreate, WorkspaceUpdate
 
 

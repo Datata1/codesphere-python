@@ -3,7 +3,7 @@ from pydantic import BaseModel, PrivateAttr
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...client import APIHttpClient
+    from ....http_client import APIHttpClient
 
 
 class EnvVarPair(BaseModel):

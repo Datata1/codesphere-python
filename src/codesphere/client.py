@@ -4,10 +4,10 @@ Codesphere SDK Client
 This module provides the main client class, CodesphereSDK.
 """
 
-from .cs_types.rest.http_client import APIHttpClient
-from .resources.metadata.resources import MetadataResource
-from .resources.team.resources import TeamsResource
-from .resources.workspace.resources import WorkspacesResource
+from .http_client import APIHttpClient
+from .resources.metadata import MetadataResource
+from .resources.team import TeamsResource
+from .resources.workspace import WorkspacesResource
 
 
 class CodesphereSDK:

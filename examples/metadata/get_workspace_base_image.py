@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 async def main():
     """Fetches base images."""
     async with CodesphereSDK() as sdk:
-        images = await sdk.metadata.images()
+        images = await sdk.metadata.list_images()
         for image in images:
             print(image.model_dump_json(indent=2))
 

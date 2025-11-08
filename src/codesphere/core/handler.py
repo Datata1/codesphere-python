@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Type, get_args, get_origin
 import httpx
 from pydantic import BaseModel, PrivateAttr, ValidationError
 
-from .http_client import APIHttpClient
+from ..http_client import APIHttpClient
 from .operations import APIOperation
 
 log = logging.getLogger(__name__)

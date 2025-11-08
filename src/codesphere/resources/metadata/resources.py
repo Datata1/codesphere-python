@@ -3,8 +3,8 @@ Defines the resource class for the Metadata API endpoints.
 """
 
 from typing import List
-from ...cs_types.rest.operations import APIOperation, AsyncCallable
-from ..base import ResourceBase
+from ...core import APIOperation, AsyncCallable
+from ...core import ResourceBase
 from .models import Datacenter, WsPlan, Image
 
 

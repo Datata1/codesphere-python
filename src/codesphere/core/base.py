@@ -1,5 +1,5 @@
-from ..cs_types.rest.http_client import APIHttpClient
-from ..cs_types.rest.handler import _APIOperationExecutor
+from ..http_client import APIHttpClient
+from .handler import _APIOperationExecutor
 
 
 class ResourceBase(_APIOperationExecutor):
