@@ -1,14 +1,10 @@
 from __future__ import annotations
 from pydantic import BaseModel
 import datetime
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 
-class Datacenters(BaseModel):
-    """Defines the request body for creating a team."""
+class Datacenter(BaseModel):
+    """Represents a physical data center location."""
 
     id: int
     name: str
@@ -16,8 +12,8 @@ class Datacenters(BaseModel):
     countryCode: str
 
 
-class Characteristics(BaseModel):
-    """Defines the hardware and service characteristics of a workspace plan."""
+class Characteristic(BaseModel):
+    """Defines the resource specifications for a WsPlan."""
 
     id: int
     CPU: float
@@ -28,19 +24,21 @@ class Characteristics(BaseModel):
     onDemand: bool
 
 
-class WsPlans(BaseModel):
-    """Contains all fields that appear in a workspace-plans response."""
+class WsPlan(BaseModel):
+    """
+    Represents a purchasable workspace plan.
+    """
 
     id: int
     priceUsd: int
     title: str
     deprecated: bool
-    characteristics: Characteristics
+    characteristics: Characteristic
     maxReplicas: int
 
 
-class Images(BaseModel):
-    """Represents a team as it appears in the list response."""
+class Image(BaseModel):
+    """Represents a runnable workspace base image."""
 
     id: str
     name: str

@@ -1,50 +1,75 @@
-import httpx
-from pydantic import BaseModel
-from typing import Optional, Any
-from functools import partial
+"""
+Codesphere SDK Client
 
-from .config import settings
+This module provides the main client class, CodesphereSDK.
+"""
+
+from .cs_types.rest.http_client import APIHttpClient
+from .resources.metadata.resources import MetadataResource
+from .resources.team.resources import TeamsResource
+from .resources.workspace.resources import WorkspacesResource
 
 
-class APIHttpClient:
-    def __init__(self, base_url: str = "https://codesphere.com/api"):
-        self._token = settings.token.get_secret_value()
-        self._base_url = base_url or str(settings.base_url)
-        self.client: Optional[httpx.AsyncClient] = None
+class CodesphereSDK:
+    """The main entrypoint for interacting with the `Codesphere Public API <https://codesphere.com/api/swagger-ui/?ref=codesphere.ghost.io#/>`_.
 
-        # Dynamically create get, post, put, patch, delete methods
-        for method in ["get", "post", "put", "patch", "delete"]:
-            setattr(self, method, partial(self.request, method.upper()))
+    This class manages the HTTP client, its lifecycle,
+    and provides access to the various API resources.
+
+    Primary usage is via an asynchronous context manager:
+
+    Usage:
+        >>> import asyncio
+        >>> from codesphere import CodesphereSDK
+        >>>
+        >>> async def main():
+        >>>     async with CodesphereSDK() as sdk:
+        >>>         teams = await sdk.teams.list()
+        >>>         print(teams)
+        >>>
+        >>> asyncio.run(main())
+
+    Attributes:
+        teams (TeamsResource): Access to Team API operations.
+        workspaces (WorkspacesResource): Access to Workspace API operations.
+        metadata (MetadataResource): Access to Metadata API operations.
+    """
+
+    teams: TeamsResource
+    """Access to the Team API. (e.g., `sdk.teams.list()`)"""
+
+    workspaces: WorkspacesResource
+    """Access to the Workspace API. (e.g., `sdk.workspaces.list()`)"""
+
+    metadata: MetadataResource
+    """Access to the Metadata API. (e.g., `sdk.metadata.list_plans()`)"""
+
+    def __init__(self):
+        self._http_client = APIHttpClient()
+        self.teams = TeamsResource(self._http_client)
+        self.workspaces = WorkspacesResource(self._http_client)
+        self.metadata = MetadataResource(self._http_client)
+
+    async def open(self):
+        """Manually opens the underlying HTTP client session.
+
+        Required for manual lifecycle control when not using `async with`.
+
+        Usage:
+            >>> sdk = CodesphereSDK()
+            >>> await sdk.open()
+            >>> # ... API calls ...
+            >>> await sdk.close()
+        """
+        await self._http_client.open()
+
+    async def close(self):
+        """Manually closes the underlying HTTP client session."""
+        await self._http_client.close()
 
     async def __aenter__(self):
-        timeout_config = httpx.Timeout(
-            settings.client_timeout_connect, read=settings.client_timeout_read
-        )
-        self.client = httpx.AsyncClient(
-            base_url=self._base_url,
-            headers={"Authorization": f"Bearer {self._token}"},
-            timeout=timeout_config,
-        )
+        await self.open()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
-        if self.client:
-            await self.client.aclose()
-
-    async def request(
-        self, method: str, endpoint: str, **kwargs: Any
-    ) -> httpx.Response:
-        if not self.client:
-            raise RuntimeError(
-                "APIHttpClient must be used within an 'async with' statement."
-            )
-
-        # If a 'json' payload is a Pydantic model, automatically convert it.
-        if "json" in kwargs and isinstance(kwargs["json"], BaseModel):
-            kwargs["json"] = kwargs["json"].model_dump(exclude_none=True)
-
-        print(f"{method} {endpoint} {kwargs}")
-
-        response = await self.client.request(method, endpoint, **kwargs)
-        response.raise_for_status()
-        return response
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._http_client.close(exc_type, exc_val, exc_tb)
