@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Type, get_args, get_origin
 
 import httpx
 from pydantic import BaseModel, PrivateAttr, ValidationError
+from pydantic.fields import FieldInfo
 
 from ..http_client import APIHttpClient
 from .operations import APIOperation
@@ -16,9 +17,17 @@ class _APIOperationExecutor:
 
     def __getattribute__(self, name: str) -> Any:
         attr = super().__getattribute__(name)
+        operation = None
 
-        if isinstance(attr, APIOperation):
-            return partial(self._execute_operation, operation=attr)
+        if isinstance(attr, FieldInfo):
+            if isinstance(attr.default, APIOperation):
+                operation = attr.default
+        elif isinstance(attr, APIOperation):
+            operation = attr
+
+        if operation:
+            return partial(self._execute_operation, operation=operation)
+
         return attr
 
     async def _execute_operation(self, operation: APIOperation, **kwargs: Any) -> Any:
@@ -48,15 +57,20 @@ class APIRequestHandler:
 
     def _prepare_request_args(self) -> tuple[str, dict]:
         format_args = {}
+        format_args.update(self.kwargs)
+        format_args.update(self.executor.__dict__)
         if isinstance(self.executor, BaseModel):
             format_args.update(self.executor.model_dump())
         format_args.update(self.kwargs)
+
         endpoint = self.operation.endpoint_template.format(**format_args)
 
         payload = None
         if json_data_obj := self.kwargs.get("data"):
             if isinstance(json_data_obj, BaseModel):
                 payload = json_data_obj.model_dump(exclude_none=True)
+            else:
+                payload = json_data_obj
 
         request_kwargs = {"params": self.kwargs.get("params"), "json": payload}
         return endpoint, {k: v for k, v in request_kwargs.items() if v is not None}

@@ -8,21 +8,11 @@ logging.basicConfig(level=logging.INFO)
 async def main():
     async with CodesphereSDK() as sdk:
         all_teams = await sdk.teams.list()
-        if not all_teams:
-            print("No teams found. Cannot get a workspace.")
-            return
-
         first_team = all_teams[0]
-
         workspaces = await sdk.workspaces.list_by_team(team_id=first_team.id)
-        if not workspaces:
-            print(f"No workspaces found in team '{first_team.name}'.")
-            return
-
         first_workspace = workspaces[0]
-        workspace_id_to_fetch = first_workspace.id
-        workspace = await sdk.workspaces.get(workspace_id=workspace_id_to_fetch)
-        print(workspace.model_dump_json(indent=2))
+        state = await first_workspace.get_status()
+        print(state.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":
