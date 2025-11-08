@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 async def main():
     try:
         async with CodesphereSDK() as sdk:
-            team = await sdk.teams.get(team_id="<id>")
+            team = await sdk.teams.get(team_id=12312)
             print(team.model_dump_json(indent=2))
 
     except Exception as e:

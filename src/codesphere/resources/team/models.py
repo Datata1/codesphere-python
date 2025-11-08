@@ -9,8 +9,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from ...cs_types.rest.handler import _APIOperationExecutor
-from ...cs_types.rest.operations import APIOperation, AsyncCallable
+from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
 
 
 class TeamCreate(BaseModel):

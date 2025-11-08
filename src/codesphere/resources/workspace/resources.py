@@ -1,7 +1,6 @@
 from typing import List, Protocol
 
-from ...cs_types.rest.operations import APIOperation
-from ..base import ResourceBase
+from ...core import APIOperation, ResourceBase
 from .models import Workspace, WorkspaceCreate
 
 

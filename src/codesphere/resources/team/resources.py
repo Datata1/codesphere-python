@@ -4,8 +4,7 @@ Defines the resource class for the Team API endpoints.
 
 from typing import List, Protocol
 
-from ...cs_types.rest.operations import APIOperation, AsyncCallable
-from ..base import ResourceBase
+from ...core import APIOperation, AsyncCallable, ResourceBase
 from .models import Team, TeamCreate
 
 

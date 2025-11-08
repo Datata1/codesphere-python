@@ -22,8 +22,7 @@ Basic Usage:
 import logging
 from .client import CodesphereSDK
 
-from .cs_types.exceptions.exceptions import CodesphereError, AuthenticationError
-
+from .exceptions import CodesphereError, AuthenticationError
 from .resources.team import Team, TeamCreate, TeamBase
 from .resources.workspace import (
     Workspace,

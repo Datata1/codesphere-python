@@ -3,7 +3,7 @@ import logging
 import httpx
 from pydantic import BaseModel
 from typing import Optional, Any
-from ...config import settings
+from .config import settings
 
 log = logging.getLogger(__name__)
 
