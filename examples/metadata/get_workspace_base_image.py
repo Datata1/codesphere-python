@@ -1,5 +1,8 @@
 import asyncio
+import logging
 from codesphere import CodesphereSDK
+
+logging.basicConfig(level=logging.INFO)
 
 
 async def main():

@@ -1,5 +1,11 @@
-from typing import Awaitable, Callable, List, Protocol
-from ..base import ResourceBase, APIOperation
+"""
+Defines the resource class for the Team API endpoints.
+"""
+
+from typing import List, Protocol
+
+from ...cs_types.rest.operations import APIOperation, AsyncCallable
+from ..base import ResourceBase
 from .models import Team, TeamCreate
 
 
@@ -12,11 +18,23 @@ class CreateTeamCallable(Protocol):
 
 
 class TeamsResource(ResourceBase):
-    """Contains all API operations for team ressources."""
-
-    list: Callable[[], Awaitable[List[Team]]]
     """
-    Fetches all teams.
+    Provides access to the Team API operations.
+
+    Usage:
+        >>> # Access via the main SDK client
+        >>> async with CodesphereSDK() as sdk:
+        >>>     new_team_data = TeamCreate(name="My Team", dc=1)
+        >>>     new_team = await sdk.teams.create(data=new_team_data)
+        >>>     team = await sdk.teams.get(team_id=new_team.id)
+    """
+
+    list: AsyncCallable[List[Team]]
+    """
+    Fetches a list of all teams the user belongs to.
+    
+    Returns:
+        List[Team]: A list of Team objects.
     """
     list = APIOperation(
         method="GET",
@@ -47,7 +65,8 @@ class TeamsResource(ResourceBase):
     Creates a new team.
     
     Args:
-        data (TeamCreate): The data payload for the new team.
+        data (TeamCreate): A :class:`~.models.TeamCreate` object
+            containing the new team's information.
     
     Returns:
         Team: The newly created Team object.

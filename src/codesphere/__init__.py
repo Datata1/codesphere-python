@@ -1,34 +1,39 @@
-from .client import APIHttpClient
-from .resources.team.resources import TeamsResource, TeamCreate
-from .resources.workspace.resources import WorkspacesResource
-from .resources.metadata.resources import MetadataResource
-from .resources.workspace.models import (
+"""
+Codesphere SDK - Python client for the Codesphere API.
+
+This package provides a high-level asynchronous client for interacting
+with the `Codesphere Public API <https://codesphere.com/api/swagger-ui/?ref=codesphere.ghost.io#/>`_.
+
+Main Entrypoint:
+    `from codesphere import CodesphereSDK`
+
+Basic Usage:
+    >>> import asyncio
+    >>> from codesphere import CodesphereSDK
+    >>>
+    >>> async def main():
+    >>>     async with CodesphereSDK() as sdk:
+    >>>         teams = await sdk.teams.list()
+    >>>         print(teams)
+    >>>
+    >>> asyncio.run(main())
+"""
+
+import logging
+from .client import CodesphereSDK
+
+from .cs_types.exceptions.exceptions import CodesphereError, AuthenticationError
+
+from .resources.team import Team, TeamCreate, TeamBase
+from .resources.workspace import (
     Workspace,
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceStatus,
 )
+from .resources.metadata import Datacenter, Characteristic, WsPlan, Image
 
-
-class CodesphereSDK:
-    def __init__(self, token: str = None):
-        self._http_client = APIHttpClient()
-        self.teams: TeamsResource | None = None
-        self.workspaces: WorkspacesResource | None = None
-
-    async def __aenter__(self):
-        """Wird beim Eintritt in den 'async with'-Block aufgerufen."""
-        await self._http_client.__aenter__()
-
-        self.teams = TeamsResource(self._http_client)
-        self.workspaces = WorkspacesResource(self._http_client)
-        self.metadata = MetadataResource(self._http_client)
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Wird beim Verlassen des 'async with'-Blocks aufgerufen."""
-        await self._http_client.__aexit__(exc_type, exc_val, exc_tb)
-
+logging.getLogger("codesphere").addHandler(logging.NullHandler())
 
 __all__ = [
     "CodesphereSDK",
@@ -36,9 +41,13 @@ __all__ = [
     "AuthenticationError",
     "Team",
     "TeamCreate",
-    "TeamInList",
+    "TeamBase",
     "Workspace",
     "WorkspaceCreate",
     "WorkspaceUpdate",
     "WorkspaceStatus",
+    "Datacenter",
+    "Characteristic",
+    "WsPlan",
+    "Image",
 ]

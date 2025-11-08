@@ -1,31 +1,37 @@
-from typing import Awaitable, Callable, List
-from ..base import ResourceBase, APIOperation
-from .models import Datacenters, WsPlans, Images
+"""
+Defines the resource class for the Metadata API endpoints.
+"""
+
+from typing import List
+from ...cs_types.rest.operations import APIOperation, AsyncCallable
+from ..base import ResourceBase
+from .models import Datacenter, WsPlan, Image
 
 
 class MetadataResource(ResourceBase):
-    """Contains all API operations for team ressources."""
-
-    datacenters: Callable[[], Awaitable[List[Datacenters]]]
-    datacenters = APIOperation(
+    list_datacenters: AsyncCallable[List[Datacenter]]
+    """Fetches a list of all available data centers."""
+    list_datacenters = APIOperation(
         method="GET",
         endpoint_template="/metadata/datacenters",
         input_model=None,
-        response_model=List[Datacenters],
+        response_model=List[Datacenter],
     )
 
-    plans: Callable[[], Awaitable[List[WsPlans]]]
-    plans = APIOperation(
+    list_plans: AsyncCallable[List[WsPlan]]
+    """Fetches a list of all available workspace plans."""
+    list_plans = APIOperation(
         method="GET",
         endpoint_template="/metadata/workspace-plans",
         input_model=None,
-        response_model=List[WsPlans],
+        response_model=List[WsPlan],
     )
 
-    images: Callable[[], Awaitable[List[Images]]]
-    images = APIOperation(
+    list_images: AsyncCallable[List[Image]]
+    """Fetches a list of all available workspace base images."""
+    list_images = APIOperation(
         method="GET",
         endpoint_template="/metadata/workspace-base-images",
         input_model=None,
-        response_model=List[Images],
+        response_model=List[Image],
     )

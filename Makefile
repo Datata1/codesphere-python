@@ -66,3 +66,6 @@ pypi: ## publishes to PyPI
 	@echo "\n>>> Publishing to PyPI..."
 	uv publish
 	@echo "\n\033[0;32mPyPI release complete! The GitHub Action will now create the GitHub Release.\033[0m"
+
+tree: ## shows filetree in terminal without uninteresting files
+	tree -I "*.pyc|*.lock"

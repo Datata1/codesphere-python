@@ -5,8 +5,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """
     API Client Settings
-
-    TODO: add List of available env vars
     """
 
     model_config = SettingsConfigDict(

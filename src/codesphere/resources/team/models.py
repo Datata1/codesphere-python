@@ -1,21 +1,26 @@
-from __future__ import annotations
-from pydantic import BaseModel, PrivateAttr
-from typing import Optional, TYPE_CHECKING
+"""
+Pydantic models for the Team resource.
 
-if TYPE_CHECKING:
-    from ...client import APIHttpClient
+Includes the 'active' Team model (with API methods)
+and data-only models for creation payloads.
+"""
+
+from __future__ import annotations
+from pydantic import BaseModel, Field
+from typing import Optional
+
+from ...cs_types.rest.handler import _APIOperationExecutor
+from ...cs_types.rest.operations import APIOperation, AsyncCallable
 
 
 class TeamCreate(BaseModel):
-    """Defines the request body for creating a team."""
+    """Data payload required for creating a new team."""
 
     name: str
     dc: int
 
 
 class TeamBase(BaseModel):
-    """Contains all fields that appear in almost every team response."""
-
     id: int
     name: str
     description: Optional[str] = None
@@ -26,16 +31,31 @@ class TeamBase(BaseModel):
     role: Optional[int] = None
 
 
-class Team(TeamBase):
+class Team(TeamBase, _APIOperationExecutor):
     """
-    Represents a complete, single team object (detail view).
-    This is the "active" model with methods.
+    Represents a complete, 'active' team object returned from the API.
+
+    This model includes methods to interact with the resource directly.
+
+    Usage:
+        >>> # Get a team instance
+        >>> team = await sdk.teams.get(team_id=123)
+        >>> # Call methods on it
+        >>> await team.delete()
     """
 
-    _http_client: Optional[APIHttpClient] = PrivateAttr(default=None)
-
-    async def delete(self) -> None:
-        """Deletes this team via the API."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-        await self._http_client.delete(f"/teams/{self.id}")
+    delete: AsyncCallable[None]
+    """
+    Deletes this team via the API.
+    
+    .. warning::
+       This is a destructive operation and cannot be undone.
+    """
+    delete = Field(
+        default=APIOperation(
+            method="DELETE",
+            endpoint_template="/teams/{id}",
+            response_model=None,
+        ),
+        exclude=True,
+    )
