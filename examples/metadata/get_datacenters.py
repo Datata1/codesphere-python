@@ -1,5 +1,4 @@
 import asyncio
-import pprint
 from codesphere import CodesphereSDK
 
 
@@ -7,12 +6,9 @@ async def main():
     """Fetches datacenters."""
     async with CodesphereSDK() as sdk:
         datacenters = await sdk.metadata.datacenters()
-
         for datacenter in datacenters:
-            pprint.pprint(datacenter.name)
-            pprint.pprint(datacenter.city)
-            pprint.pprint(datacenter.countryCode)
-            pprint.pprint(datacenter.id)
+            print(datacenter.model_dump_json(indent=2))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,21 +1,15 @@
-import os
 import httpx
 from pydantic import BaseModel
 from typing import Optional, Any
 from functools import partial
 
-from .resources.exceptions.exceptions import AuthenticationError
+from .config import settings
 
 
 class APIHttpClient:
     def __init__(self, base_url: str = "https://codesphere.com/api"):
-        auth_token = os.environ.get("CS_TOKEN")
-
-        if not auth_token:
-            raise AuthenticationError()
-
-        self._token = auth_token
-        self._base_url = base_url
+        self._token = settings.token.get_secret_value()
+        self._base_url = base_url or str(settings.base_url)
         self.client: Optional[httpx.AsyncClient] = None
 
         # Dynamically create get, post, put, patch, delete methods
@@ -23,7 +17,9 @@ class APIHttpClient:
             setattr(self, method, partial(self.request, method.upper()))
 
     async def __aenter__(self):
-        timeout_config = httpx.Timeout(10.0, read=30.0)
+        timeout_config = httpx.Timeout(
+            settings.client_timeout_connect, read=settings.client_timeout_read
+        )
         self.client = httpx.AsyncClient(
             base_url=self._base_url,
             headers={"Authorization": f"Bearer {self._token}"},

@@ -12,7 +12,7 @@ install: ## Sets up the development environment
 	@echo "2. Installing all dependencies (including 'dev')..."
 	uv pip install -e '.[dev]'
 	@echo "3. Installing git hooks with pre-commit..."
-	pre-commit install --hook-type commit-msg --hook-type pre-commit --hook-type pre-push
+	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit --hook-type pre-push
 	@echo "\n\033[0;32mSetup complete! Please activate the virtual environment with 'source .venv/bin/activate'.\033[0m"
 
 commit: ## Starts Commitizen for a guided commit message

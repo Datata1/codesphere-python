@@ -1,6 +1,5 @@
-# z.B. in src/codesphere/__init__.py oder einer eigenen client.py
 from .client import APIHttpClient
-from .resources.team.resources import TeamsResource
+from .resources.team.resources import TeamsResource, TeamCreate
 from .resources.workspace.resources import WorkspacesResource
 from .resources.metadata.resources import MetadataResource
 from .resources.workspace.models import (
