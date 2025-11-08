@@ -30,6 +30,7 @@ from .resources.workspace import (
     WorkspaceUpdate,
     WorkspaceStatus,
 )
+from .resources.workspace.envVars import EnvVar
 from .resources.metadata import Datacenter, Characteristic, WsPlan, Image
 
 logging.getLogger("codesphere").addHandler(logging.NullHandler())
@@ -45,6 +46,7 @@ __all__ = [
     "WorkspaceCreate",
     "WorkspaceUpdate",
     "WorkspaceStatus",
+    "EnvVar",
     "Datacenter",
     "Characteristic",
     "WsPlan",

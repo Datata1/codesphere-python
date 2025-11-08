@@ -1,14 +1,13 @@
 from __future__ import annotations
-from pydantic import BaseModel, PrivateAttr, parse_obj_as
-from typing import Optional, List, TYPE_CHECKING, Union, Dict
+from functools import cached_property
+import logging
+from pydantic import BaseModel, Field
+from typing import Dict, Optional, List
 
-if TYPE_CHECKING:
-    from ...http_client import APIHttpClient
+from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
+from .envVars import EnvVar, WorkspaceEnvVarManager
 
-
-class EnvVarPair(BaseModel):
-    name: str
-    value: str
+log = logging.getLogger(__name__)
 
 
 class WorkspaceCreate(BaseModel):
@@ -25,28 +24,10 @@ class WorkspaceCreate(BaseModel):
     welcomeMessage: Optional[str] = None
     vpnConfig: Optional[str] = None
     restricted: Optional[bool] = None
-    env: Optional[List[EnvVarPair]] = None
+    env: Optional[List[EnvVar]] = None
 
 
-# Defines the request body for PATCH /workspaces/{workspaceId}
-class WorkspaceUpdate(BaseModel):
-    planId: Optional[int] = None
-    baseImage: Optional[str] = None
-    name: Optional[str] = None
-    replicas: Optional[int] = None
-    vpnConfig: Optional[str] = None
-    restricted: Optional[bool] = None
-
-
-# Defines the response from GET /workspaces/{workspaceId}/status
-class WorkspaceStatus(BaseModel):
-    isRunning: bool
-
-
-# This is the main model for a workspace, returned by GET, POST, and LIST
-class Workspace(BaseModel):
-    _http_client: Optional[APIHttpClient] = PrivateAttr(default=None)
-
+class WorkspaceBase(BaseModel):
     id: int
     teamId: int
     name: str
@@ -63,81 +44,120 @@ class Workspace(BaseModel):
     vpnConfig: Optional[str] = None
     restricted: bool
 
-    async def update(self, data: WorkspaceUpdate) -> None:
-        """Updates this workspace with new data."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
 
-        await self._http_client.patch(
-            f"/workspaces/{self.id}", json=data.model_dump(exclude_unset=True)
-        )
-        # Optionally, update the local object's state
-        for key, value in data.model_dump(exclude_unset=True).items():
+class WorkspaceUpdate(BaseModel):
+    planId: Optional[int] = None
+    baseImage: Optional[str] = None
+    name: Optional[str] = None
+    replicas: Optional[int] = None
+    vpnConfig: Optional[str] = None
+    restricted: Optional[bool] = None
+
+
+class WorkspaceStatus(BaseModel):
+    isRunning: bool
+
+
+class CommandInput(BaseModel):
+    command: str
+    env: Optional[Dict[str, str]] = None
+
+
+class CommandOutput(BaseModel):
+    command: str
+    workingDir: str
+    output: str
+    error: str
+
+
+class Workspace(WorkspaceBase, _APIOperationExecutor):
+    update_op: AsyncCallable[None] = Field(
+        default=APIOperation(
+            method="PATCH",
+            endpoint_template="/workspaces/{id}",
+            response_model=None,
+        ),
+        exclude=True,
+    )
+
+    delete_op: AsyncCallable[None] = Field(
+        default=APIOperation(
+            method="DELETE",
+            endpoint_template="/workspaces/{id}",
+            response_model=None,
+        ),
+        exclude=True,
+    )
+
+    get_status_op: AsyncCallable[WorkspaceStatus] = Field(
+        default=APIOperation(
+            method="GET",
+            endpoint_template="/workspaces/{id}/status",
+            response_model=WorkspaceStatus,
+        ),
+        exclude=True,
+    )
+
+    execute_command_op: AsyncCallable[CommandOutput] = Field(
+        default=APIOperation(
+            method="POST",
+            endpoint_template="/workspaces/{id}/execute",
+            input_model=CommandInput,
+            response_model=CommandOutput,
+        ),
+        exclude=True,
+    )
+
+    async def update(self, data: WorkspaceUpdate) -> None:
+        """
+        Updates this workspace with new data and refreshes the
+        local object state.
+
+        Args:
+            data (WorkspaceUpdate): The payload with fields to update.
+        """
+        await self.update_op(data=data)
+        update_data = data.model_dump(exclude_unset=True)
+        log.debug(f"Updating local workspace state (id={self.id}) with: {update_data}")
+        for key, value in update_data.items():
             setattr(self, key, value)
 
     async def delete(self) -> None:
         """Deletes this workspace."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-        await self._http_client.delete(f"/workspaces/{self.id}")
+        await self.delete_op()
 
     async def get_status(self) -> WorkspaceStatus:
         """Gets the running status of this workspace."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
+        return await self.get_status_op()
 
-        response = await self._http_client.get(f"/workspaces/{self.id}/status")
-        return WorkspaceStatus.model_validate(response.json())
-
-    async def get_env_vars(self) -> list[EnvVarPair]:
-        """Fetches all environment variables for this workspace."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-
-        response = await self._http_client.get(f"/workspaces/{self.id}/env-vars")
-        return parse_obj_as(list[EnvVarPair], response.json())
-
-    async def set_env_vars(
-        self, env_vars: Union[List[EnvVarPair], List[Dict[str, str]]]
-    ) -> None:
+    async def execute_command(
+        self, command: str, env: Optional[Dict[str, str]] = None
+    ) -> CommandOutput:
         """
-        Sets or updates environment variables for this workspace.
-        This operation replaces all existing variables with the provided list.
-        Accepts either a list of EnvVarPair models or a list of dictionaries.
+        Führt einen Befehl in diesem Workspace aus.
+
+        Args:
+            command (str): Der Bash-Befehl (z.B. "ls -la").
+            env (Dict[str, str], optional): Env Vars, die nur
+                für diesen Befehl gesetzt werden.
+
+        Returns:
+            CommandOutput: Ein Objekt mit stdout und stderr.
+        """
+        command_data = CommandInput(command=command, env=env)
+        return await self.execute_command_op(data=command_data)
+
+    @cached_property
+    def env_vars(self) -> WorkspaceEnvVarManager:
+        """
+        Provides access to the Environment Variable manager for this workspace.
+
+        Usage:
+            >>> await workspace.env_vars.get()
+            >>> await workspace.env_vars.set([{"name": "KEY", "value": "VALUE"}])
         """
         if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-
-        json_payload = []
-        if env_vars and isinstance(env_vars[0], EnvVarPair):
-            json_payload = [var.model_dump() for var in env_vars]
-        else:
-            json_payload = env_vars
-
-        await self._http_client.put(
-            f"/workspaces/{self.id}/env-vars", json=json_payload
+            raise RuntimeError("Cannot access 'env_vars' on a detached model.")
+        return WorkspaceEnvVarManager(
+            http_client=self._http_client, workspace_id=self.id
         )
-
-    async def delete_env_vars(
-        self, var_names: Union[List[str], List[EnvVarPair]]
-    ) -> None:
-        """Deletes specific environment variables from this workspace."""
-        if not self._http_client:
-            raise RuntimeError("Cannot make API calls on a detached model.")
-
-        payload = []
-        if var_names and isinstance(var_names[0], EnvVarPair):
-            payload = [var.name for var in var_names]
-        else:
-            payload = var_names
-
-        await self._http_client.delete(f"/workspaces/{self.id}/env-vars", json=payload)
-
-    async def execute_command():
-        pass
-
-    async def git_pull():
-        pass
-
-    async def git_head():
-        pass

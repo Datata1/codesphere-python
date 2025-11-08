@@ -1,26 +1,27 @@
 import asyncio
-import pprint
-from codesphere import CodesphereSDK
+import logging
+from codesphere import CodesphereSDK, EnvVar
+
+logging.basicConfig(level=logging.INFO)
 
 
 async def main():
-    """Fetches a team and lists all workspaces within it."""
     async with CodesphereSDK() as sdk:
         teams = await sdk.teams.list()
         workspaces = await sdk.workspaces.list_by_team(team_id=teams[0].id)
-
         workspace = workspaces[0]
 
-        envs = await workspace.get_env_vars()
-        print("Current Environment Variables:")
-        pprint.pprint(envs)
+        new_vars = [
+            EnvVar(name="MY_NEW_VAR", value="hello_world"),
+            EnvVar(name="ANOTHER_VAR", value="123456"),
+        ]
 
-        envs[0].value = "new_value"  # Modify an environment variable
-        await workspace.set_env_vars(envs)  # Update the environment variables
+        await workspace.env_vars.set(new_vars)
 
-        print("Updated Environment Variables:")
-        updated_envs = await workspace.get_env_vars()
-        pprint.pprint(updated_envs)
+        print("\n--- Verifying new list ---")
+        current_vars = await workspace.env_vars.get()
+        for env in current_vars:
+            print(env.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":
