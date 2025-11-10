@@ -53,10 +53,11 @@ class DomainVerificationStatus(BaseModel):
 
 
 class CustomDomainConfig(BaseModel):
-    max_body_size_mb: int
-    max_connection_timeout: int
-    use_regex: bool
-    restricted: bool
+    model_config = camel_config
+    restricted: Optional[bool] = None
+    max_body_size_mb: Optional[int] = None
+    max_connection_timeout_s: Optional[int] = None
+    use_regex: Optional[bool] = None
 
 
 class Domain(DomainBase, _APIOperationExecutor):
@@ -73,6 +74,7 @@ class Domain(DomainBase, _APIOperationExecutor):
         default=APIOperation(
             method="PUT",
             endpoint_template="/domains/team/{team_id}/domain/{name}/workspace-connections",
+            input_model=CustomDomainConfig,
             response_model=DomainBase,
         ),
         exclude=True,
@@ -97,8 +99,10 @@ class Domain(DomainBase, _APIOperationExecutor):
     )
 
     async def update_domain(self, data: CustomDomainConfig) -> DomainBase:
-        await self.update_domain_op(data=data)
-        update_model_fields(target=self.custom_config, source=data)
+        payload = data.model_dump(exclude_unset=True, by_alias=True)
+        response = await self.update_domain_op(data=payload)
+        update_model_fields(target=self, source=response)
+        return response
 
     async def update_workspace_connections(
         self, data: dict[str, list[int]]
