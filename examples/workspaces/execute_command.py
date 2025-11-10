@@ -2,13 +2,7 @@ import asyncio
 import logging
 from codesphere import CodesphereSDK
 
-# --- Logging-Konfiguration ---
 logging.basicConfig(level=logging.INFO)
-# (Optionale Logger stummschalten)
-logging.getLogger("codesphere.http_client").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-log = logging.getLogger(__name__)
 
 
 async def main():

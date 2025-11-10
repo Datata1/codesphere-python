@@ -4,6 +4,7 @@ import logging
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, List
 
+from ...utils import update_model_fields
 from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
 from .envVars import EnvVar, WorkspaceEnvVarManager
 
@@ -117,10 +118,7 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
             data (WorkspaceUpdate): The payload with fields to update.
         """
         await self.update_op(data=data)
-        update_data = data.model_dump(exclude_unset=True)
-        log.debug(f"Updating local workspace state (id={self.id}) with: {update_data}")
-        for key, value in update_data.items():
-            setattr(self, key, value)
+        update_model_fields(target=self, source=data)
 
     async def delete(self) -> None:
         """Deletes this workspace."""
@@ -133,17 +131,6 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
     async def execute_command(
         self, command: str, env: Optional[Dict[str, str]] = None
     ) -> CommandOutput:
-        """
-        Führt einen Befehl in diesem Workspace aus.
-
-        Args:
-            command (str): Der Bash-Befehl (z.B. "ls -la").
-            env (Dict[str, str], optional): Env Vars, die nur
-                für diesen Befehl gesetzt werden.
-
-        Returns:
-            CommandOutput: Ein Objekt mit stdout und stderr.
-        """
         command_data = CommandInput(command=command, env=env)
         return await self.execute_command_op(data=command_data)
 
