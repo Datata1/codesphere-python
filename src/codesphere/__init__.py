@@ -32,6 +32,13 @@ from .resources.workspace import (
 )
 from .resources.workspace.envVars import EnvVar
 from .resources.metadata import Datacenter, Characteristic, WsPlan, Image
+from .resources.domain import (
+    Domain,
+    CustomDomainConfig,
+    DomainVerificationStatus,
+    DomainBase,
+    DomainsResource,
+)
 
 logging.getLogger("codesphere").addHandler(logging.NullHandler())
 
@@ -51,4 +58,9 @@ __all__ = [
     "Characteristic",
     "WsPlan",
     "Image",
+    "Domain",
+    "CustomDomainConfig",
+    "DomainVerificationStatus",
+    "DomainBase",
+    "DomainsResource",
 ]

@@ -8,6 +8,7 @@ from .http_client import APIHttpClient
 from .resources.metadata import MetadataResource
 from .resources.team import TeamsResource
 from .resources.workspace import WorkspacesResource
+from .resources.domain import DomainsResource
 
 
 class CodesphereSDK:
@@ -33,6 +34,7 @@ class CodesphereSDK:
         teams (TeamsResource): Access to Team API operations.
         workspaces (WorkspacesResource): Access to Workspace API operations.
         metadata (MetadataResource): Access to Metadata API operations.
+        domains (DomainResource): Access to Domain API operations.
     """
 
     teams: TeamsResource
@@ -44,11 +46,14 @@ class CodesphereSDK:
     metadata: MetadataResource
     """Access to the Metadata API. (e.g., `sdk.metadata.list_plans()`)"""
 
+    domains: DomainsResource
+
     def __init__(self):
         self._http_client = APIHttpClient()
         self.teams = TeamsResource(self._http_client)
         self.workspaces = WorkspacesResource(self._http_client)
         self.metadata = MetadataResource(self._http_client)
+        self.domains = DomainsResource(self._http_client)
 
     async def open(self):
         """Manually opens the underlying HTTP client session.
