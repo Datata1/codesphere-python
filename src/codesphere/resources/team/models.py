@@ -6,10 +6,15 @@ and data-only models for creation payloads.
 """
 
 from __future__ import annotations
+from functools import cached_property
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
+from .domain.models import TeamDomainManager
 from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
+
+if TYPE_CHECKING:
+    pass
 
 
 class TeamCreate(BaseModel):
@@ -58,3 +63,18 @@ class Team(TeamBase, _APIOperationExecutor):
         ),
         exclude=True,
     )
+
+    @cached_property
+    def domains(self) -> TeamDomainManager:
+        """
+        Provides access to domain management for this team.
+
+        Usage:
+            >>> team = await sdk.teams.get(id=123)
+            >>> await team.domains.list()
+            >>> await team.domains.create("example.com")
+        """
+        if not self._http_client:
+            raise RuntimeError("Cannot access 'domains' on a detached model.")
+
+        return TeamDomainManager(http_client=self._http_client, team_id=self.id)

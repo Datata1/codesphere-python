@@ -23,7 +23,17 @@ import logging
 from .client import CodesphereSDK
 
 from .exceptions import CodesphereError, AuthenticationError
-from .resources.team import Team, TeamCreate, TeamBase
+from .resources.team import (
+    Team,
+    TeamCreate,
+    TeamBase,
+    Domain,
+    CustomDomainConfig,
+    WorkspaceConnectionItem,
+    DomainVerificationStatus,
+    DomainBase,
+    DomainRouting,
+)
 from .resources.workspace import (
     Workspace,
     WorkspaceCreate,
@@ -32,13 +42,6 @@ from .resources.workspace import (
 )
 from .resources.workspace.envVars import EnvVar
 from .resources.metadata import Datacenter, Characteristic, WsPlan, Image
-from .resources.domain import (
-    Domain,
-    CustomDomainConfig,
-    DomainVerificationStatus,
-    DomainBase,
-    DomainsResource,
-)
 
 logging.getLogger("codesphere").addHandler(logging.NullHandler())
 
@@ -60,7 +63,9 @@ __all__ = [
     "Image",
     "Domain",
     "CustomDomainConfig",
+    "WorkspaceConnectionItem",
     "DomainVerificationStatus",
     "DomainBase",
     "DomainsResource",
+    "DomainRouting",
 ]

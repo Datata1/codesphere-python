@@ -7,7 +7,10 @@ logging.basicConfig(level=logging.INFO)
 
 async def main():
     async with CodesphereSDK() as sdk:
-        domain = await sdk.domains.create(team_id=35663, domain_name="test.com")
+        team = await sdk.teams.get(team_id=35663)
+        domain = await team.domains.create(domain_name="test.com")
+
+        print(f"Domain created: {domain.name}")
         print(domain.model_dump_json(indent=2))
 
 

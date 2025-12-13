@@ -72,6 +72,10 @@ class APIRequestHandler:
             else:
                 payload = json_data_obj
 
+        if payload is not None:
+            log.info(f"PAYLOAD TYPE: {type(payload)}")
+            log.info(f"PAYLOAD CONTENT: {payload}")
+
         request_kwargs = {"params": self.kwargs.get("params"), "json": payload}
         return endpoint, {k: v for k, v in request_kwargs.items() if v is not None}
 
