@@ -1,69 +1,33 @@
-from typing import List, Protocol
+from typing import List
+from pydantic import Field
 
-from ...core import APIOperation, ResourceBase
-from .models import Workspace, WorkspaceCreate
+from ...core.base import ResourceList
+from ...core.operations import AsyncCallable
+from .operations import (
+    _CREATE_OP,
+    _GET_OP,
+    _LIST_BY_TEAM_OP,
+)
 
-
-class ListWorkspacesCallable(Protocol):
-    async def __call__(self, *, team_id: int) -> List[Workspace]: ...
-
-
-class GetWorkspaceCallable(Protocol):
-    async def __call__(self, *, workspace_id: int) -> Workspace: ...
-
-
-class CreateWorkspaceCallable(Protocol):
-    async def __call__(self, *, data: WorkspaceCreate) -> Workspace: ...
+from ...core import ResourceBase
+from .schemas import Workspace, WorkspaceCreate
 
 
 class WorkspacesResource(ResourceBase):
-    """Manages all API operations for the Workspace resource."""
-
-    list_by_team: ListWorkspacesCallable
-    """
-    Lists all workspaces for a specific team.
-
-    Args:
-        team_id (int): The unique identifier for the team.
-
-    Returns:
-        List[Workspace]: A list of Workspace objects associated with the team.
-    """
-    list_by_team = APIOperation(
-        method="GET",
-        endpoint_template="/workspaces/team/{team_id}",
-        response_model=List[Workspace],
+    list_by_team_op: AsyncCallable[ResourceList[Workspace]] = Field(
+        default=_LIST_BY_TEAM_OP, exclude=True
     )
 
-    get: GetWorkspaceCallable
-    """
-    Fetches a single workspace by its ID.
+    async def list(self, team_id: int) -> List[Workspace]:
+        result = await self.list_by_team_op(data=team_id)
+        return result.root
 
-    Args:
-        workspace_id (int): The unique identifier for the workspace.
+    get_op: AsyncCallable[Workspace] = Field(default=_GET_OP, exclude=True)
 
-    Returns:
-        Workspace: The requested Workspace object.
-    """
-    get = APIOperation(
-        method="GET",
-        endpoint_template="/workspaces/{workspace_id}",
-        response_model=Workspace,
-    )
+    async def get(self, workspace_id: int) -> Workspace:
+        return await self.get_op(data=workspace_id)
 
-    create: CreateWorkspaceCallable
-    """
-    Creates a new workspace.
+    create_op: AsyncCallable[Workspace] = Field(default=_CREATE_OP, exclude=True)
 
-    Args:
-        data (WorkspaceCreate): The data payload for the new workspace.
-
-    Returns:
-        Workspace: The newly created Workspace object.
-    """
-    create = APIOperation(
-        method="POST",
-        endpoint_template="/workspaces",
-        input_model=WorkspaceCreate,
-        response_model=Workspace,
-    )
+    async def create(self, payload=WorkspaceCreate) -> Workspace:
+        return await self.create_op(data=payload)

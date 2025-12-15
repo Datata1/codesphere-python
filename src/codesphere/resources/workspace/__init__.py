@@ -1,4 +1,4 @@
-from .models import Workspace, WorkspaceCreate, WorkspaceUpdate, WorkspaceStatus
+from .schemas import Workspace, WorkspaceCreate, WorkspaceUpdate, WorkspaceStatus
 from .resources import WorkspacesResource
 
 __all__ = [

@@ -1,37 +1,31 @@
-"""
-Defines the resource class for the Metadata API endpoints.
-"""
-
 from typing import List
-from ...core import APIOperation, AsyncCallable
+from pydantic import Field
+from ...core.base import ResourceList
+from ...core import AsyncCallable
 from ...core import ResourceBase
-from .models import Datacenter, WsPlan, Image
+from .operations import _LIST_DC_OP, _LIST_IMAGES_OP, _LIST_PLANS_OP
+from .schemas import Datacenter, WsPlan, Image
 
 
 class MetadataResource(ResourceBase):
-    list_datacenters: AsyncCallable[List[Datacenter]]
-    """Fetches a list of all available data centers."""
-    list_datacenters = APIOperation(
-        method="GET",
-        endpoint_template="/metadata/datacenters",
-        input_model=None,
-        response_model=List[Datacenter],
+    list_datacenters_op: AsyncCallable[ResourceList[Datacenter]] = Field(
+        default=_LIST_DC_OP, exclude=True
+    )
+    list_plans_op: AsyncCallable[ResourceList[WsPlan]] = Field(
+        default=_LIST_PLANS_OP, exclude=True
+    )
+    list_images_op: AsyncCallable[ResourceList[Image]] = Field(
+        default=_LIST_IMAGES_OP, exclude=True
     )
 
-    list_plans: AsyncCallable[List[WsPlan]]
-    """Fetches a list of all available workspace plans."""
-    list_plans = APIOperation(
-        method="GET",
-        endpoint_template="/metadata/workspace-plans",
-        input_model=None,
-        response_model=List[WsPlan],
-    )
+    async def list_datacenters(self) -> List[Datacenter]:
+        result = await self.list_datacenters_op()
+        return result.root
 
-    list_images: AsyncCallable[List[Image]]
-    """Fetches a list of all available workspace base images."""
-    list_images = APIOperation(
-        method="GET",
-        endpoint_template="/metadata/workspace-base-images",
-        input_model=None,
-        response_model=List[Image],
-    )
+    async def list_plans(self) -> List[WsPlan]:
+        result = await self.list_plans_op()
+        return result.root
+
+    async def list_images(self) -> List[Image]:
+        result = await self.list_images_op()
+        return result.root

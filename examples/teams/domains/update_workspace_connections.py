@@ -11,13 +11,11 @@ async def main():
         domainBuilder = DomainRouting()
 
         routing = (
-            domainBuilder.add_route("/", [74861])
-            .add_route("/api", [74868])
-            .add_route("/test", [74868])
+            domainBuilder.add("/", [74861]).add("/api", [74868]).add("/test", [74868])
         )
 
         domain = await team.domains.update_workspace_connections(
-            domain_name="test.com", connections=routing
+            name="test.com", connections=routing
         )
         print(f"Current routing: {domain.workspaces}")
 

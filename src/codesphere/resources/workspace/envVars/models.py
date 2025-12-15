@@ -3,9 +3,11 @@ import logging
 from typing import Dict, List, Union
 from pydantic import BaseModel, Field
 
-from codesphere.core.handler import _APIOperationExecutor
-from codesphere.core.operations import APIOperation, AsyncCallable
-from codesphere.http_client import APIHttpClient
+from ....core.base import ResourceList
+from ....core.handler import _APIOperationExecutor
+from ....core.operations import AsyncCallable
+from ....http_client import APIHttpClient
+from .operations import _BULK_DELETE_OP, _BULK_SET_OP, _GET_OP
 
 log = logging.getLogger(__name__)
 
@@ -16,66 +18,48 @@ class EnvVar(BaseModel):
 
 
 class WorkspaceEnvVarManager(_APIOperationExecutor):
-    """
-    Verwaltet die Env Vars für einen *bestimmten* Workspace.
-    Wird typischerweise über 'workspace.env_vars' aufgerufen.
-    """
-
     def __init__(self, http_client: APIHttpClient, workspace_id: int):
         self._http_client = http_client
         self._workspace_id = workspace_id
         self.id = workspace_id
 
-    get_all_op: AsyncCallable[List[EnvVar]] = Field(
-        default=APIOperation(
-            method="GET",
-            endpoint_template="/workspaces/{id}/env-vars",
-            response_model=List[EnvVar],
-        ),
-        exclude=True,
-    )
-
-    bulk_set_op: AsyncCallable[None] = Field(
-        default=APIOperation(
-            method="PUT",
-            endpoint_template="/workspaces/{id}/env-vars",
-            response_model=None,
-        ),
-        exclude=True,
-    )
-
-    bulk_delete_op: AsyncCallable[None] = Field(
-        default=APIOperation(
-            method="DELETE",
-            endpoint_template="/workspaces/{id}/env-vars",
-            response_model=None,
-        ),
+    get_all_op: AsyncCallable[ResourceList[EnvVar]] = Field(
+        default=_GET_OP,
         exclude=True,
     )
 
     async def get(self) -> List[EnvVar]:
-        """Fetches all environment variables for this workspace."""
-        env_vars = await self.get_all_op()
-        return env_vars
+        return await self.get_all_op()
 
-    async def set(self, env_vars: Union[List[EnvVar], List[Dict[str, str]]]) -> None:
-        """Sets or updates environment variables for this workspace."""
-        json_payload = []
-        if env_vars:
-            if isinstance(env_vars[0], EnvVar):
-                json_payload = [var.model_dump() for var in env_vars]
-            else:
-                json_payload = env_vars
+    bulk_set_op: AsyncCallable[None] = Field(
+        default=_BULK_SET_OP,
+        exclude=True,
+    )
 
-        await self.bulk_set_op(data=json_payload)
+    async def set(
+        self, env_vars: Union[ResourceList[EnvVar], List[Dict[str, str]]]
+    ) -> None:
+        payload = ResourceList[EnvVar].model_validate(env_vars)
+        await self.bulk_set_op(data=payload.model_dump())
 
-    async def delete(self, var_names: Union[List[str], List[EnvVar]]) -> None:
-        """Deletes specific environment variables from this workspace."""
-        payload = []
-        if var_names:
-            if isinstance(var_names[0], EnvVar):
-                payload = [var.name for var in var_names]
-            else:
-                payload = var_names
+    bulk_delete_op: AsyncCallable[None] = Field(
+        default=_BULK_DELETE_OP,
+        exclude=True,
+    )
 
-        await self.bulk_delete_op(data=payload)
+    async def delete(self, items: Union[List[str], ResourceList[EnvVar]]) -> None:
+        if not items:
+            return
+
+        payload: List[str] = []
+
+        for item in items:
+            if isinstance(item, str):
+                payload.append(item)
+            elif hasattr(item, "name"):
+                payload.append(item.name)
+            elif isinstance(item, dict) and "name" in item:
+                payload.append(item["name"])
+
+        if payload:
+            await self.bulk_delete_op(data=payload)

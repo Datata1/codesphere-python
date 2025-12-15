@@ -1,9 +1,8 @@
-from .models import Team, TeamCreate, TeamBase
+from .schemas import Team, TeamCreate, TeamBase
 from .resources import TeamsResource
-from .domain.models import (
+from .domain.resources import (
     Domain,
     CustomDomainConfig,
-    WorkspaceConnectionItem,
     DomainVerificationStatus,
     DomainBase,
     DomainRouting,
@@ -17,7 +16,6 @@ __all__ = [
     "TeamsResource",
     "Domain",
     "CustomDomainConfig",
-    "WorkspaceConnectionItem",
     "DomainVerificationStatus",
     "DomainBase",
     "DomainRouting",
