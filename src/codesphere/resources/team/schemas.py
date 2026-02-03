@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 from .domain.manager import TeamDomainManager
 from ...core.base import CamelModel
 from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
+from ...http_client import APIHttpClient
 
 if TYPE_CHECKING:
     pass
@@ -40,7 +41,9 @@ class Team(TeamBase, _APIOperationExecutor):
 
     @cached_property
     def domains(self) -> TeamDomainManager:
-        if not self._http_client:
+        if self._http_client is None or not isinstance(
+            self._http_client, APIHttpClient
+        ):
             raise RuntimeError("Cannot access 'domains' on a detached model.")
 
         return TeamDomainManager(http_client=self._http_client, team_id=self.id)

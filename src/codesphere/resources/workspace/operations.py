@@ -1,10 +1,7 @@
-from .schemas import (
-    CommandInput,
-    CommandOutput,
-    Workspace,
-    WorkspaceCreate,
-    WorkspaceStatus,
-)
+from __future__ import annotations
+
+from .command_schemas import CommandInput, CommandOutput, WorkspaceStatus
+from .schemas import Workspace, WorkspaceCreate
 from ...core.base import ResourceList
 from ...core.operations import APIOperation
 

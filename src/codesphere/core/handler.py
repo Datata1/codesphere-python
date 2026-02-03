@@ -72,17 +72,13 @@ class APIRequestHandler:
             else:
                 payload = json_data_obj
 
-        if payload is not None:
-            log.info(f"PAYLOAD TYPE: {type(payload)}")
-            log.info(f"PAYLOAD CONTENT: {payload}")
-
         request_kwargs = {"params": self.kwargs.get("params"), "json": payload}
         return endpoint, {k: v for k, v in request_kwargs.items() if v is not None}
 
     async def _make_request(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> httpx.Response:
-        if not self.http_client:
+        if self.http_client is None or not hasattr(self.http_client, "request"):
             raise RuntimeError("HTTP Client is not initialized.")
         return await self.http_client.request(
             method=method, endpoint=endpoint, **kwargs
@@ -99,7 +95,7 @@ class APIRequestHandler:
         response_model: Type[BaseModel] | Type[List[BaseModel]] | None,
         endpoint_for_logging: str,
     ) -> Any:
-        if response_model is None:
+        if response_model is None or response_model is type(None):
             return None
 
         try:

@@ -74,6 +74,10 @@ pythonpath = [
 python_files = "test_*.py *_test.py"
 python_functions = "test_*"
 python_classes = "Test*"
+asyncio_mode = "auto"
+markers = [
+    "integration: mark test as integration test (requires API token and --run-integration flag)",
+]
 
 [tool.coverage.run]
 source = ["api", "handler", "tasks"]

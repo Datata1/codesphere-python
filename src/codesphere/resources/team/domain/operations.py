@@ -47,5 +47,5 @@ _VERIFY_OP = APIOperation(
 _DELETE_OP = APIOperation(
     method="DELETE",
     endpoint_template="/domains/team/{team_id}/domain/{name}",
-    response_model=DomainBase,
+    response_model=type(None),
 )

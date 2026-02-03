@@ -1,20 +1,15 @@
 from __future__ import annotations
 import logging
 from typing import Dict, List, Union
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from .schemas import EnvVar
 from ....core.base import ResourceList
 from ....core.handler import _APIOperationExecutor
 from ....core.operations import AsyncCallable
 from ....http_client import APIHttpClient
-from .operations import _BULK_DELETE_OP, _BULK_SET_OP, _GET_OP
 
 log = logging.getLogger(__name__)
-
-
-class EnvVar(BaseModel):
-    name: str
-    value: str
 
 
 class WorkspaceEnvVarManager(_APIOperationExecutor):
@@ -24,32 +19,38 @@ class WorkspaceEnvVarManager(_APIOperationExecutor):
         self.id = workspace_id
 
     get_all_op: AsyncCallable[ResourceList[EnvVar]] = Field(
-        default=_GET_OP,
+        default=None,
         exclude=True,
     )
 
     async def get(self) -> List[EnvVar]:
-        return await self.get_all_op()
+        from .operations import _GET_OP
+
+        return await self._execute_operation(_GET_OP)
 
     bulk_set_op: AsyncCallable[None] = Field(
-        default=_BULK_SET_OP,
+        default=None,
         exclude=True,
     )
 
     async def set(
         self, env_vars: Union[ResourceList[EnvVar], List[Dict[str, str]]]
     ) -> None:
+        from .operations import _BULK_SET_OP
+
         payload = ResourceList[EnvVar].model_validate(env_vars)
-        await self.bulk_set_op(data=payload.model_dump())
+        await self._execute_operation(_BULK_SET_OP, data=payload.model_dump())
 
     bulk_delete_op: AsyncCallable[None] = Field(
-        default=_BULK_DELETE_OP,
+        default=None,
         exclude=True,
     )
 
     async def delete(self, items: Union[List[str], ResourceList[EnvVar]]) -> None:
         if not items:
             return
+
+        from .operations import _BULK_DELETE_OP
 
         payload: List[str] = []
 
@@ -62,4 +63,4 @@ class WorkspaceEnvVarManager(_APIOperationExecutor):
                 payload.append(item["name"])
 
         if payload:
-            await self.bulk_delete_op(data=payload)
+            await self._execute_operation(_BULK_DELETE_OP, data=payload)
