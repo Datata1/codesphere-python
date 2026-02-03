@@ -1,45 +1,46 @@
 from __future__ import annotations
-from pydantic import BaseModel
 import datetime
 
+from ...core.base import CamelModel
 
-class Datacenter(BaseModel):
+
+class Datacenter(CamelModel):
     """Represents a physical data center location."""
 
     id: int
     name: str
     city: str
-    countryCode: str
+    country_code: str
 
 
-class Characteristic(BaseModel):
+class Characteristic(CamelModel):
     """Defines the resource specifications for a WsPlan."""
 
     id: int
-    CPU: float
-    GPU: int
-    RAM: int
-    SSD: int
-    TempStorage: int
-    onDemand: bool
+    cpu: float
+    gpu: int
+    ram: int
+    ssd: int
+    temp_storage: int
+    on_demand: bool
 
 
-class WsPlan(BaseModel):
+class WsPlan(CamelModel):
     """
     Represents a purchasable workspace plan.
     """
 
     id: int
-    priceUsd: int
+    price_usd: int
     title: str
     deprecated: bool
     characteristics: Characteristic
-    maxReplicas: int
+    max_replicas: int
 
 
-class Image(BaseModel):
+class Image(CamelModel):
     """Represents a runnable workspace base image."""
 
     id: str
     name: str
-    supportedUntil: datetime.datetime
+    supported_until: datetime.datetime

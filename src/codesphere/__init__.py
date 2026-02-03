@@ -23,7 +23,16 @@ import logging
 from .client import CodesphereSDK
 
 from .exceptions import CodesphereError, AuthenticationError
-from .resources.team import Team, TeamCreate, TeamBase
+from .resources.team import (
+    Team,
+    TeamCreate,
+    TeamBase,
+    Domain,
+    CustomDomainConfig,
+    DomainVerificationStatus,
+    DomainBase,
+    DomainRouting,
+)
 from .resources.workspace import (
     Workspace,
     WorkspaceCreate,
@@ -51,4 +60,10 @@ __all__ = [
     "Characteristic",
     "WsPlan",
     "Image",
+    "Domain",
+    "CustomDomainConfig",
+    "DomainVerificationStatus",
+    "DomainBase",
+    "DomainsResource",
+    "DomainRouting",
 ]
