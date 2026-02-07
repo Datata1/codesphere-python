@@ -1,21 +1,17 @@
 from typing import List, Union
+
 from pydantic import Field
 
 from ....core.base import ResourceList
 from ....core.handler import _APIOperationExecutor
 from ....core.operations import AsyncCallable
 from ....http_client import APIHttpClient
-from .schemas import CustomDomainConfig, DomainRouting, RoutingMap
-from .resources import Domain
 from .operations import _CREATE_OP, _GET_OP, _LIST_OP, _UPDATE_OP, _UPDATE_WS_OP
+from .resources import Domain
+from .schemas import CustomDomainConfig, DomainRouting, RoutingMap
 
 
 class TeamDomainManager(_APIOperationExecutor):
-    """
-    Verwaltet Domains im Kontext eines spezifischen Teams.
-    Zugriff typischerweise über 'team.domains'.
-    """
-
     def __init__(self, http_client: APIHttpClient, team_id: int):
         self._http_client = http_client
         self.team_id = team_id
