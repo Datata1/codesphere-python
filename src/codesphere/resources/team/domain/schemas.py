@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from typing import Dict, List, Optional, TypeAlias
+
 from pydantic import Field, RootModel
 
 from ....core.base import CamelModel
@@ -31,10 +33,6 @@ class CustomDomainConfig(CamelModel):
 
 
 class DomainRouting(RootModel):
-    """
-    Helper class to build the routing configuration.
-    """
-
     root: RoutingMap = Field(default_factory=dict)
 
     def add(self, path: str, workspace_ids: List[int]) -> DomainRouting:
