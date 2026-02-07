@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="https://codesphere.com/img/codesphere-light.svg" alt="Codesphere" width="300">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://codesphere.com/img/codesphere-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://codesphere.com/img/codesphere-light.svg">
+    <img src="https://codesphere.com/img/codesphere-light.svg" alt="Codesphere" width="300">
+  </picture>
 </p>
 
 <h1 align="center">Codesphere Python SDK</h1>
