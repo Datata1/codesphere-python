@@ -1,4 +1,4 @@
-from typing import Any, Generic, List, TypeVar
+from typing import Any, Generic, List, Literal, TypeVar
 
 import yaml
 from pydantic import BaseModel, ConfigDict, RootModel
@@ -67,7 +67,9 @@ class CamelModel(BaseModel):
         Returns:
             YAML string representation of the model.
         """
-        data = self.to_dict(by_alias=by_alias, exclude_none=exclude_none)
+        data = self.model_dump(
+            by_alias=by_alias, exclude_none=exclude_none, mode="json"
+        )
         return yaml.safe_dump(
             data, default_flow_style=False, allow_unicode=True, sort_keys=False
         )
@@ -86,19 +88,25 @@ class ResourceList(RootModel[List[ModelT]], Generic[ModelT]):
         return len(self.root)
 
     def to_list(
-        self, *, by_alias: bool = True, exclude_none: bool = False
+        self,
+        *,
+        by_alias: bool = True,
+        exclude_none: bool = False,
+        mode: Literal["python", "json"] = "python",
     ) -> list[dict[str, Any]]:
         """Export all items as a list of dictionaries.
 
         Args:
             by_alias: Use camelCase keys (API format) if True, snake_case if False.
             exclude_none: Exclude fields with None values if True.
+            mode: Serialization mode. "python" returns native Python objects,
+                  "json" returns JSON-compatible types (e.g., datetime as ISO string).
 
         Returns:
             List of dictionary representations.
         """
         return [
-            item.model_dump(by_alias=by_alias, exclude_none=exclude_none)
+            item.model_dump(by_alias=by_alias, exclude_none=exclude_none, mode=mode)
             for item in self.root
         ]
 
@@ -122,7 +130,8 @@ class ResourceList(RootModel[List[ModelT]], Generic[ModelT]):
         import json
 
         return json.dumps(
-            self.to_list(by_alias=by_alias, exclude_none=exclude_none), indent=indent
+            self.to_list(by_alias=by_alias, exclude_none=exclude_none, mode="json"),
+            indent=indent,
         )
 
     def to_yaml(self, *, by_alias: bool = True, exclude_none: bool = False) -> str:
@@ -135,8 +144,8 @@ class ResourceList(RootModel[List[ModelT]], Generic[ModelT]):
         Returns:
             YAML string representation.
         """
-        return yaml.dump(
-            self.to_list(by_alias=by_alias, exclude_none=exclude_none),
+        return yaml.safe_dump(
+            self.to_list(by_alias=by_alias, exclude_none=exclude_none, mode="json"),
             default_flow_style=False,
             allow_unicode=True,
             sort_keys=False,

@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -318,6 +319,49 @@ class TestResourceListExport:
 
         assert "itemId: 1" in result
         assert "itemId: 2" in result
+
+    def test_to_json_with_datetime_field(self):
+        """to_json should properly serialize datetime fields to ISO format."""
+
+        class Item(CamelModel):
+            item_id: int
+            created_at: datetime
+
+        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=timezone.utc)
+        items = [Item(item_id=1, created_at=dt)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_json()
+
+        parsed = json.loads(result)
+        assert parsed == [{"itemId": 1, "createdAt": "2026-02-07T12:30:45Z"}]
+
+    def test_to_list_mode_json(self):
+        """to_list with mode='json' should return JSON-serializable types."""
+
+        class Item(CamelModel):
+            item_id: int
+            created_at: datetime
+
+        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=timezone.utc)
+        items = [Item(item_id=1, created_at=dt)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_list(mode="json")
+
+        assert result == [{"itemId": 1, "createdAt": "2026-02-07T12:30:45Z"}]
+
+    def test_to_list_mode_python(self):
+        """to_list with mode='python' (default) should return native Python types."""
+
+        class Item(CamelModel):
+            item_id: int
+            created_at: datetime
+
+        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=timezone.utc)
+        items = [Item(item_id=1, created_at=dt)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_list()
+
+        assert result == [{"itemId": 1, "createdAt": dt}]
 
 
 class TestResourceBase:
