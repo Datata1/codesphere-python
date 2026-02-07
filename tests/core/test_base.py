@@ -48,22 +48,12 @@ class TestCamelModel:
     )
     def test_camel_case_alias_generation(self, case: CamelModelTestCase):
         """Test that snake_case fields are aliased to camelCase."""
+        from pydantic import create_model
 
-        class TestModel(CamelModel):
-            pass
-
-        TestModel.model_rebuild()
-
-        local_ns = {}
-        exec(
-            f"""class DynamicModel(CamelModel):
-    {case.field_name}: str = "test"
-""",
-            {"CamelModel": CamelModel},
-            local_ns,
+        DynamicModel = create_model(
+            "DynamicModel", __base__=CamelModel, **{case.field_name: (str, "test")}
         )
 
-        DynamicModel = local_ns["DynamicModel"]
         field_info = DynamicModel.model_fields[case.field_name]
         assert field_info.alias == case.expected_alias
 
