@@ -47,9 +47,9 @@ class ReactiveServiceConfig(CamelModel):
     """Configuration for a reactive (custom) service in the run stage."""
 
     steps: List[Step] = Field(default_factory=list)
-    env: Optional[Dict[str, str]] = None
-    plan: Optional[int] = None
+    plan: int  # Required - workspace plan ID
     replicas: int = 1
+    env: Optional[Dict[str, str]] = None
     base_image: Optional[str] = None
     run_as_user: Optional[int] = Field(default=None, ge=0, le=65534)
     run_as_group: Optional[int] = Field(default=None, ge=0, le=65534)
@@ -289,16 +289,25 @@ class ReactiveServiceBuilder:
 
         Returns:
             Tuple of (service_name, ReactiveServiceConfig).
+
+        Raises:
+            ValueError: If plan is not set.
         """
+        if self._plan is None:
+            raise ValueError(
+                f"Service '{self._name}' requires a plan ID. "
+                "Use .plan(plan_id) to set it."
+            )
+
         network = None
         if self._ports or self._paths:
             network = NetworkConfig(ports=self._ports, paths=self._paths)
 
         config = ReactiveServiceConfig(
             steps=self._steps,
-            env=self._env if self._env else None,
             plan=self._plan,
             replicas=self._replicas,
+            env=self._env if self._env else None,
             base_image=self._base_image,
             run_as_user=self._run_as_user,
             run_as_group=self._run_as_group,

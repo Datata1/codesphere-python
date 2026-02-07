@@ -424,6 +424,9 @@ class TestDeleteProfile:
 class TestProfileBuilder:
     """Tests for the ProfileBuilder fluent API."""
 
+    # Default plan ID for testing
+    TEST_PLAN_ID = 8
+
     def test_build_empty_profile(self):
         """ProfileBuilder should create an empty profile."""
         profile = ProfileBuilder().build()
@@ -463,6 +466,7 @@ class TestProfileBuilder:
         profile = (
             ProfileBuilder()
             .add_reactive_service("web")
+            .plan(self.TEST_PLAN_ID)
             .add_step("npm start")
             .add_port(3000, public=True)
             .replicas(2)
@@ -475,6 +479,7 @@ class TestProfileBuilder:
         service = profile.run["web"]
         assert isinstance(service, ReactiveServiceConfig)
         assert len(service.steps) == 1
+        assert service.plan == self.TEST_PLAN_ID
         assert service.replicas == 2
         assert service.env == {"NODE_ENV": "production"}
         assert service.network is not None
@@ -487,6 +492,7 @@ class TestProfileBuilder:
         profile = (
             ProfileBuilder()
             .add_reactive_service("api")
+            .plan(self.TEST_PLAN_ID)
             .add_port(8080)
             .add_path("/api", port=8080, strip_path=True)
             .add_path("/health", port=8080)
@@ -556,10 +562,12 @@ class TestProfileBuilder:
             .add_step("npm install")
             .done()
             .add_reactive_service("web")
+            .plan(self.TEST_PLAN_ID)
             .add_step("npm start")
             .add_port(3000)
             .done()
             .add_reactive_service("worker")
+            .plan(self.TEST_PLAN_ID)
             .add_step("npm run worker")
             .done()
             .add_managed_service("redis", provider="redis", plan="micro")
@@ -581,6 +589,7 @@ class TestProfileBuilder:
             .add_step("npm install")
             .done()
             .add_reactive_service("web")
+            .plan(self.TEST_PLAN_ID)
             .add_step("npm start")
             .add_port(3000, public=True)
             .done()
@@ -594,15 +603,31 @@ class TestProfileBuilder:
         assert "npm install" in yaml_output
         assert "run:" in yaml_output
         assert "web:" in yaml_output
+        assert f"plan: {self.TEST_PLAN_ID}" in yaml_output
+
+    def test_build_reactive_service_without_plan_raises_error(self):
+        """Building a reactive service without plan should raise ValueError."""
+        with pytest.raises(ValueError, match="requires a plan ID"):
+            (
+                ProfileBuilder()
+                .add_reactive_service("web")
+                .add_step("npm start")
+                .add_port(3000)
+                .done()
+                .build()
+            )
 
 
 class TestReactiveServiceBuilder:
     """Tests for the standalone ReactiveServiceBuilder."""
 
+    TEST_PLAN_ID = 8
+
     def test_build_reactive_service(self):
         """ReactiveServiceBuilder should create a service configuration."""
         name, config = (
             ReactiveServiceBuilder("api")
+            .plan(self.TEST_PLAN_ID)
             .add_step("npm start")
             .add_port(8080, public=True)
             .replicas(2)
@@ -611,12 +636,18 @@ class TestReactiveServiceBuilder:
 
         assert name == "api"
         assert isinstance(config, ReactiveServiceConfig)
+        assert config.plan == self.TEST_PLAN_ID
         assert config.replicas == 2
 
     def test_service_name_property(self):
         """ReactiveServiceBuilder should expose the service name."""
         builder = ReactiveServiceBuilder("my-service")
         assert builder.name == "my-service"
+
+    def test_build_without_plan_raises_error(self):
+        """Building without plan should raise ValueError."""
+        with pytest.raises(ValueError, match="requires a plan ID"):
+            ReactiveServiceBuilder("api").add_step("npm start").build()
 
 
 class TestManagedServiceBuilder:
@@ -641,6 +672,8 @@ class TestManagedServiceBuilder:
 
 class TestProfileConfigModels:
     """Tests for the profile configuration Pydantic models."""
+
+    TEST_PLAN_ID = 8
 
     def test_step_model(self):
         """Step model should have command and optional name."""
@@ -678,9 +711,10 @@ class TestProfileConfigModels:
         assert len(network.ports) == 1
         assert len(network.paths) == 1
 
-    def test_reactive_service_config_defaults(self):
-        """ReactiveServiceConfig should have sensible defaults."""
-        config = ReactiveServiceConfig()
+    def test_reactive_service_config_requires_plan(self):
+        """ReactiveServiceConfig should require a plan."""
+        config = ReactiveServiceConfig(plan=self.TEST_PLAN_ID)
+        assert config.plan == self.TEST_PLAN_ID
         assert config.replicas == 1
         assert config.steps == []
         assert config.env is None

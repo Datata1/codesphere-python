@@ -185,6 +185,7 @@ class TestSaveProfileIntegration:
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
+        test_plan_id: int,
     ):
         """save_profile should create a profile file using ProfileBuilder."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
@@ -196,6 +197,7 @@ class TestSaveProfileIntegration:
             .add_step("echo 'Installing dependencies'")
             .done()
             .add_reactive_service("web")
+            .plan(test_plan_id)
             .add_step("echo 'Starting server'")
             .add_port(3000, public=True)
             .replicas(1)
@@ -280,6 +282,7 @@ class TestGetProfileIntegration:
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
+        test_plan_id: int,
     ):
         """get_profile should return the YAML content of a saved profile."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
@@ -291,6 +294,7 @@ class TestGetProfileIntegration:
             .add_step("npm install")
             .done()
             .add_reactive_service("api")
+            .plan(test_plan_id)
             .add_step("npm start")
             .add_port(8080)
             .env("NODE_ENV", "production")
@@ -357,6 +361,7 @@ class TestProfileBuilderIntegration:
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
+        test_plan_id: int,
     ):
         """A complex profile should survive save and retrieve."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
@@ -372,6 +377,7 @@ class TestProfileBuilderIntegration:
             .add_step("npm test")
             .done()
             .add_reactive_service("frontend")
+            .plan(test_plan_id)
             .add_step("npm run serve")
             .add_port(3000, public=True)
             .add_path("/", port=3000)
@@ -380,6 +386,7 @@ class TestProfileBuilderIntegration:
             .health_endpoint("/health")
             .done()
             .add_reactive_service("backend")
+            .plan(test_plan_id)
             .add_step("python -m uvicorn main:app")
             .add_port(8000)
             .add_path("/api", port=8000, strip_path=True)
@@ -412,6 +419,7 @@ class TestProfileBuilderIntegration:
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
+        test_plan_id: int,
     ):
         """Profile with special characters in env values should work."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
@@ -420,6 +428,7 @@ class TestProfileBuilderIntegration:
         profile = (
             ProfileBuilder()
             .add_reactive_service("app")
+            .plan(test_plan_id)
             .add_step("npm start")
             .add_port(3000)
             .env("DATABASE_URL", "postgres://user:p@ss=word@localhost:5432/db")
@@ -437,3 +446,148 @@ class TestProfileBuilderIntegration:
 
         finally:
             await workspace.landscape.delete_profile(profile_name)
+
+
+class TestLandscapeDeploymentWorkflow:
+    """Integration tests for the complete landscape deployment workflow."""
+
+    async def test_full_landscape_workflow_deploy_teardown_delete(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        """Test the complete workflow: create profile, deploy, teardown, delete profile."""
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-workflow-test"
+
+        # Step 1: Create a valid profile with ProfileBuilder
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("echo 'Preparing...'", name="Prepare")
+            .done()
+            .add_reactive_service("web")
+            .plan(test_plan_id)
+            .add_step("echo 'Starting web service' && sleep infinity")
+            .add_port(3000, public=True)
+            .add_path("/", port=3000)
+            .replicas(1)
+            .env("NODE_ENV", "production")
+            .done()
+            .build()
+        )
+
+        try:
+            # Step 2: Save the profile
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            # Verify profile exists
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names, "Profile should exist after saving"
+
+            # Verify profile content
+            content = await workspace.landscape.get_profile(profile_name)
+            assert "schemaVersion: v0.2" in content
+            assert "web:" in content
+            assert f"plan: {test_plan_id}" in content
+
+            # Step 3: Deploy the landscape
+            await workspace.landscape.deploy(profile=profile_name)
+
+            # Step 4: Teardown the landscape
+            await workspace.landscape.teardown()
+
+        finally:
+            # Step 5: Delete the profile
+            await workspace.landscape.delete_profile(profile_name)
+
+            # Verify profile is deleted
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name not in profile_names, (
+                "Profile should not exist after deletion"
+            )
+
+    async def test_deploy_and_teardown_only(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        """Test deploy and teardown without profile deletion."""
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-deploy-teardown-test"
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("echo 'Setup complete'")
+            .done()
+            .add_reactive_service("api")
+            .plan(test_plan_id)
+            .add_step("echo 'API running' && sleep infinity")
+            .add_port(8080)
+            .add_path("/api", port=8080)
+            .replicas(1)
+            .done()
+            .build()
+        )
+
+        try:
+            # Save profile
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            # Deploy
+            await workspace.landscape.deploy(profile=profile_name)
+
+            # Teardown
+            await workspace.landscape.teardown()
+
+            # Profile should still exist after teardown
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names, (
+                "Profile should still exist after teardown"
+            )
+
+        finally:
+            # Cleanup
+            await workspace.landscape.delete_profile(profile_name)
+
+    async def test_profile_deletion_removes_from_list(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        """Verify that deleting a profile removes it from the profile list."""
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-deletion-verify-test"
+
+        profile = (
+            ProfileBuilder()
+            .add_reactive_service("service")
+            .plan(test_plan_id)
+            .add_step("echo 'running'")
+            .add_port(3000)
+            .done()
+            .build()
+        )
+
+        # Create profile
+        await workspace.landscape.save_profile(profile_name, profile)
+
+        # Verify it exists
+        profiles_before = await workspace.landscape.list_profiles()
+        assert profile_name in [p.name for p in profiles_before]
+
+        # Delete profile
+        await workspace.landscape.delete_profile(profile_name)
+
+        # Verify it's gone
+        profiles_after = await workspace.landscape.list_profiles()
+        assert profile_name not in [p.name for p in profiles_after], (
+            f"Profile '{profile_name}' should be removed after deletion"
+        )

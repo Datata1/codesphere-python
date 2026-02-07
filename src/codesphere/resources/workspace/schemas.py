@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from functools import cached_property
 from typing import Dict, List, Optional
@@ -95,6 +96,39 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
         from .operations import _GET_STATUS_OP
 
         return await self._execute_operation(_GET_STATUS_OP)
+
+    async def wait_until_running(
+        self,
+        *,
+        timeout: float = 300.0,
+        poll_interval: float = 5.0,
+    ) -> None:
+        """Wait until the workspace is in a running state.
+
+        Args:
+            timeout: Maximum time to wait in seconds (default: 300s / 5 minutes).
+            poll_interval: Time between status checks in seconds (default: 5s).
+
+        Raises:
+            TimeoutError: If the workspace is not running within the timeout period.
+        """
+        elapsed = 0.0
+        while elapsed < timeout:
+            status = await self.get_status()
+            if status.is_running:
+                log.debug(f"Workspace {self.id} is now running.")
+                return
+
+            log.debug(
+                f"Workspace {self.id} not running yet, "
+                f"waiting {poll_interval}s... (elapsed: {elapsed:.1f}s)"
+            )
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+        raise TimeoutError(
+            f"Workspace {self.id} did not reach running state within {timeout} seconds."
+        )
 
     async def execute_command(
         self, command: str, env: Optional[Dict[str, str]] = None
