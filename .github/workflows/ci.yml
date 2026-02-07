@@ -106,8 +106,7 @@ jobs:
       contents: read
       pull-requests: write
     env:
-      TOKEN: 'dummy-token-for-ci'
-      CODESPHERE_TOKEN: 'dummy-token-for-ci'
+      CS_TOKEN: 'dummy-token-for-ci'
 
     steps:
       - name: Checkout repository
