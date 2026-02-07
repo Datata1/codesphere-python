@@ -1,49 +1,109 @@
 <p align="center">
-  <img src="https://ai.codesphere.com/img/codesphere-logo.png" alt="Codesphere API SDK Banner" width="100">
+  <img src="https://ai.codesphere.com/img/codesphere-logo.png" alt="Codesphere" width="100">
 </p>
 
 <h1 align="center">Codesphere Python SDK</h1>
 
 <p align="center">
-  <strong>The official Python client for the Codesphere Public API.</strong>
-  <br />
-  <br />
   <a href="https://pypi.org/project/codesphere/">
-    <img alt="PyPI Version" src="https://img.shields.io/pypi/v/codesphere.svg?style=flat-square&logo=pypi&logoColor=white">
-  </a>
-  <a href="https://github.com/Datata1/codesphere-python/actions/workflows/publish.yml">
-    <img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/datata1/codesphere-python-sdk/publish.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white">
+    <img alt="PyPI" src="https://img.shields.io/pypi/v/codesphere.svg?style=flat-square">
   </a>
   <a href="https://pypi.org/project/codesphere/">
-    <img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/codesphere.svg?style=flat-square&logo=python&logoColor=white">
-  </a>
-  <a href="https://github.com/Datata1/codesphere-python/tree/main/examples">
-    <img alt="Documentation" src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square">
-  </a>
-  <a href="https://github.com/Datata1/codesphere-python/releases/latest">
-    <img alt="Latest Release" src="https://img.shields.io/github/v/release/Datata1/codesphere-python-sdk?style=flat-square&logo=github&logoColor=white">
+    <img alt="Python" src="https://img.shields.io/pypi/pyversions/codesphere.svg?style=flat-square">
   </a>
   <a href="https://github.com/Datata1/codesphere-python/blob/main/LICENSE">
     <img alt="License" src="https://img.shields.io/pypi/l/codesphere.svg?style=flat-square">
   </a>
 </p>
 
+The official Python client for the [Codesphere API](https://codesphere.com/api/swagger-ui/).
+
 ---
 
-## Overview
-
-The Codesphere Python SDK provides a convenient wrapper for the [Codesphere Public API](https://codesphere.com/api/swagger-ui/?ref=codesphere.ghost.io&anonymousId=K9iszev), allowing you to interact with all API resources from your Python applications.
-
 ## Installation
-
-You can install the SDK directly from PyPI using `pip` (or your favorite package manager like `uv`).
 
 ```bash
 pip install codesphere
 ```
 
-or
+## Configuration
+
+Create a `.env` file in your project root:
+
+```env
+CS_TOKEN=your-api-token
+```
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CS_TOKEN` | API token (required) | – |
+| `CS_BASE_URL` | API base URL | `https://codesphere.com/api` |
+
+## Quick Start
+
+```python
+import asyncio
+from codesphere import CodesphereSDK
+
+async def main():
+    async with CodesphereSDK() as sdk:
+        teams = await sdk.teams.list()
+        for team in teams:
+            print(f"{team.name} (ID: {team.id})")
+
+asyncio.run(main())
+```
+
+## Usage
+
+### Teams
+
+```python
+teams = await sdk.teams.list()
+team = await sdk.teams.get(team_id=123)
+await team.delete()
+```
+
+### Workspaces
+
+```python
+workspaces = await sdk.workspaces.list(team_id=123)
+workspace = await sdk.workspaces.get(workspace_id=456)
+
+# Execute commands
+result = await workspace.execute_command("ls -la")
+print(result.output)
+
+# Manage environment variables
+await workspace.env_vars.set([{"name": "API_KEY", "value": "secret"}])
+env_vars = await workspace.env_vars.get()
+```
+
+### Domains
+
+```python
+team = await sdk.teams.get(team_id=123)
+domains = await team.domains.list()
+domain = await team.domains.create(name="api.example.com")
+```
+
+### Metadata
+
+```python
+datacenters = await sdk.metadata.list_datacenters()
+plans = await sdk.metadata.list_plans()
+images = await sdk.metadata.list_images()
+```
+
+## Development
 
 ```bash
-uv add codesphere
+git clone https://github.com/Datata1/codesphere-python.git
+cd codesphere-python
+uv sync --all-extras
+uv run pytest
 ```
+
+## License
+
+MIT – see [LICENSE](LICENSE) for details.
