@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
@@ -140,7 +141,7 @@ class TestCamelModelExport:
         model = SampleModel(team_id=42)
         result = model.to_json()
 
-        assert result == '{"teamId":42}'
+        assert json.loads(result) == {"teamId": 42}
 
     def test_to_json_with_indent(self):
         """to_json with indent should format output."""
@@ -151,22 +152,34 @@ class TestCamelModelExport:
         model = SampleModel(team_id=42)
         result = model.to_json(indent=2)
 
-        assert '"teamId": 42' in result
+        assert json.loads(result) == {"teamId": 42}
         assert "\n" in result
 
-    def test_to_yaml_import_error(self):
-        """to_yaml should raise ImportError if PyYAML is not installed."""
-        import sys
-        from unittest.mock import patch
+    def test_to_yaml_default(self):
+        """to_yaml should export as YAML string with camelCase keys."""
+
+        class SampleModel(CamelModel):
+            team_id: int
+            user_name: str
+
+        model = SampleModel(team_id=1, user_name="test")
+        result = model.to_yaml()
+
+        assert "teamId: 1" in result
+        assert "userName: test" in result
+
+    def test_to_yaml_snake_case(self):
+        """to_yaml with by_alias=False should use snake_case keys."""
 
         class SampleModel(CamelModel):
             team_id: int
 
         model = SampleModel(team_id=1)
+        result = model.to_yaml(by_alias=False)
 
-        with patch.dict(sys.modules, {"yaml": None}):
-            with pytest.raises(ImportError, match="PyYAML is required"):
-                model.to_yaml()
+        assert "team_id: 1" in result
+
+
 class TestResourceList:
     def test_create_with_list(self):
         """ResourceList should be created with a list of items."""
@@ -267,7 +280,7 @@ class TestResourceListExport:
         resource_list = ResourceList[Item](root=items)
         result = resource_list.to_json()
 
-        assert result == '[{"itemId": 1}, {"itemId": 2}]'
+        assert json.loads(result) == [{"itemId": 1}, {"itemId": 2}]
 
     def test_to_json_with_indent(self):
         """to_json with indent should format output."""
@@ -292,6 +305,19 @@ class TestResourceListExport:
         result = resource_list.to_list()
 
         assert result == []
+
+    def test_to_yaml_default(self):
+        """to_yaml should export as YAML string."""
+
+        class Item(CamelModel):
+            item_id: int
+
+        items = [Item(item_id=1), Item(item_id=2)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_yaml()
+
+        assert "itemId: 1" in result
+        assert "itemId: 2" in result
 
 
 class TestResourceBase:

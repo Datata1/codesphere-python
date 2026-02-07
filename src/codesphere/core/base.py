@@ -1,12 +1,13 @@
 from typing import Any, Generic, List, TypeVar
 
+import yaml
 from pydantic import BaseModel, ConfigDict, RootModel
 from pydantic.alias_generators import to_camel
 
 from ..http_client import APIHttpClient
 from .handler import _APIOperationExecutor
 
-ModelT = TypeVar("ModelT")
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class ResourceBase(_APIOperationExecutor):
@@ -59,25 +60,13 @@ class CamelModel(BaseModel):
     def to_yaml(self, *, by_alias: bool = True, exclude_none: bool = False) -> str:
         """Export model as a YAML string.
 
-        Requires PyYAML to be installed (optional dependency).
-
         Args:
             by_alias: Use camelCase keys (API format) if True, snake_case if False.
             exclude_none: Exclude fields with None values if True.
 
         Returns:
             YAML string representation of the model.
-
-        Raises:
-            ImportError: If PyYAML is not installed.
         """
-        try:
-            import yaml
-        except ImportError:
-            raise ImportError(
-                "PyYAML is required for YAML export. "
-                "Install it with: pip install pyyaml"
-            )
         data = self.to_dict(by_alias=by_alias, exclude_none=exclude_none)
         return yaml.dump(
             data, default_flow_style=False, allow_unicode=True, sort_keys=False
@@ -110,8 +99,6 @@ class ResourceList(RootModel[List[ModelT]], Generic[ModelT]):
         """
         return [
             item.model_dump(by_alias=by_alias, exclude_none=exclude_none)
-            if hasattr(item, "model_dump")
-            else item
             for item in self.root
         ]
 
@@ -141,25 +128,13 @@ class ResourceList(RootModel[List[ModelT]], Generic[ModelT]):
     def to_yaml(self, *, by_alias: bool = True, exclude_none: bool = False) -> str:
         """Export all items as a YAML string.
 
-        Requires PyYAML to be installed (optional dependency).
-
         Args:
             by_alias: Use camelCase keys (API format) if True, snake_case if False.
             exclude_none: Exclude fields with None values if True.
 
         Returns:
             YAML string representation.
-
-        Raises:
-            ImportError: If PyYAML is not installed.
         """
-        try:
-            import yaml
-        except ImportError:
-            raise ImportError(
-                "PyYAML is required for YAML export. "
-                "Install it with: pip install pyyaml"
-            )
         return yaml.dump(
             self.to_list(by_alias=by_alias, exclude_none=exclude_none),
             default_flow_style=False,
