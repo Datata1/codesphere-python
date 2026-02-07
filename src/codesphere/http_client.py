@@ -1,9 +1,12 @@
-from functools import partial
 import logging
+from functools import partial
+from typing import Any, Optional
+
 import httpx
 from pydantic import BaseModel
-from typing import Optional, Any
+
 from .config import settings
+from .exceptions import NetworkError, TimeoutError, raise_for_status
 
 log = logging.getLogger(__name__)
 
@@ -68,18 +71,21 @@ class APIHttpClient:
                 f"Response: {response.status_code} {response.reason_phrase} for {method} {endpoint}"
             )
 
-            response.raise_for_status()
+            raise_for_status(response)
             return response
 
-        except httpx.HTTPStatusError as e:
-            log.error(
-                f"HTTP Error {e.response.status_code} for {e.request.method} {e.request.url}"
-            )
-            try:
-                log.error(f"Error Response Body: {e.response.json()}")
-            except Exception:
-                log.error(f"Error Response Body (non-json): {e.response.text}")
-            raise e
-        except Exception as e:
-            log.error(f"An unexpected error occurred: {e}")
-            raise e
+        except httpx.TimeoutException as e:
+            log.error(f"Request timeout for {method} {endpoint}: {e}")
+            raise TimeoutError(f"Request to {endpoint} timed out.") from e
+        except httpx.ConnectError as e:
+            log.error(f"Connection error for {method} {endpoint}: {e}")
+            raise NetworkError(
+                f"Failed to connect to the API: {e}",
+                original_error=e,
+            ) from e
+        except httpx.RequestError as e:
+            log.error(f"Network error for {method} {endpoint}: {e}")
+            raise NetworkError(
+                f"A network error occurred: {e}",
+                original_error=e,
+            ) from e
