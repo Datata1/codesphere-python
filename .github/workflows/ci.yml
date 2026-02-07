@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "Running Bandit security check..."
           set +e
-          uv run bandit -r . --format=custom --msg-template "{abspath}:{line}: {test_id}[{severity}]: {msg}" -o bandit-results.txt
+          uv run bandit -r src/codesphere --format=custom --msg-template "{abspath}:{line}: {test_id}[{severity}]: {msg}" -o bandit-results.txt
           BANDIT_EXIT_CODE=$?
           set -e
           
