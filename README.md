@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://ai.codesphere.com/img/codesphere-logo.png" alt="Codesphere" width="100">
+  <img src="https://codesphere.com/img/codepshere_light_vertical.svg" alt="Codesphere" width="100">
 </p>
 
 <h1 align="center">Codesphere Python SDK</h1>
@@ -16,23 +16,23 @@
   </a>
 </p>
 
-The official Python client for the [Codesphere API](https://codesphere.com/api/swagger-ui/).
+<p align="center">
+  <strong>The official Python client for the [Codesphere API](https://codesphere.com/api/swagger-ui/).</strong>
+</p>
+
+
 
 ---
 
 ## Installation
 
 ```bash
-pip install codesphere
+uv add codesphere
 ```
 
 ## Configuration
 
 Create a `.env` file in your project root:
-
-```env
-CS_TOKEN=your-api-token
-```
 
 | Variable | Description | Default |
 |----------|-------------|---------|
