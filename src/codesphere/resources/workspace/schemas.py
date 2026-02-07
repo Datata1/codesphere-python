@@ -1,12 +1,14 @@
 from __future__ import annotations
-from functools import cached_property
-import logging
-from typing import Dict, Optional, List
 
-from .envVars import EnvVar, WorkspaceEnvVarManager
-from ...core.base import CamelModel
+import logging
+from functools import cached_property
+from typing import Dict, List, Optional
+
 from ...core import _APIOperationExecutor
+from ...core.base import CamelModel
 from ...utils import update_model_fields
+from .envVars import EnvVar, WorkspaceEnvVarManager
+from .landscape import WorkspaceLandscapeManager
 
 log = logging.getLogger(__name__)
 
@@ -106,3 +108,9 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
     def env_vars(self) -> WorkspaceEnvVarManager:
         http_client = self.validate_http_client()
         return WorkspaceEnvVarManager(http_client, workspace_id=self.id)
+
+    @cached_property
+    def landscape(self) -> WorkspaceLandscapeManager:
+        """Manager for landscape operations (Multi Server Deployments)."""
+        http_client = self.validate_http_client()
+        return WorkspaceLandscapeManager(http_client, workspace_id=self.id)
