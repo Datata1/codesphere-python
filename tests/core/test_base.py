@@ -1,7 +1,7 @@
-import pytest
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
+import pytest
 from pydantic import BaseModel
 
 from codesphere.core.base import CamelModel, ResourceBase, ResourceList
@@ -91,6 +91,96 @@ class TestCamelModel:
         assert model.is_private is False
 
 
+class TestCamelModelExport:
+    """Tests for CamelModel export methods."""
+
+    def test_to_dict_default(self):
+        """to_dict should export with camelCase keys by default."""
+
+        class SampleModel(CamelModel):
+            team_id: int
+            user_name: str
+
+        model = SampleModel(team_id=1, user_name="test")
+        result = model.to_dict()
+
+        assert result == {"teamId": 1, "userName": "test"}
+
+    def test_to_dict_snake_case(self):
+        """to_dict with by_alias=False should export with snake_case keys."""
+
+        class SampleModel(CamelModel):
+            team_id: int
+            user_name: str
+
+        model = SampleModel(team_id=1, user_name="test")
+        result = model.to_dict(by_alias=False)
+
+        assert result == {"team_id": 1, "user_name": "test"}
+
+    def test_to_dict_exclude_none(self):
+        """to_dict with exclude_none=True should omit None values."""
+
+        class SampleModel(CamelModel):
+            team_id: int
+            optional_field: str | None = None
+
+        model = SampleModel(team_id=1, optional_field=None)
+        result = model.to_dict(exclude_none=True)
+
+        assert result == {"teamId": 1}
+        assert "optionalField" not in result
+
+    def test_to_json_default(self):
+        """to_json should export as JSON string with camelCase keys."""
+
+        class SampleModel(CamelModel):
+            team_id: int
+
+        model = SampleModel(team_id=42)
+        result = model.to_json()
+
+        assert result == '{"teamId":42}'
+
+    def test_to_json_with_indent(self):
+        """to_json with indent should format output."""
+
+        class SampleModel(CamelModel):
+            team_id: int
+
+        model = SampleModel(team_id=42)
+        result = model.to_json(indent=2)
+
+        assert '"teamId": 42' in result
+        assert "\n" in result
+
+    def test_to_yaml_import_error(self):
+        """to_yaml should raise ImportError if PyYAML is not installed."""
+        import sys
+        from unittest.mock import patch
+
+        class SampleModel(CamelModel):
+            team_id: int
+
+        model = SampleModel(team_id=1)
+
+        with patch.dict(sys.modules, {"yaml": None}):
+            # Force reimport to trigger ImportError
+            with pytest.raises(ImportError, match="PyYAML is required"):
+                # We need to actually make the import fail
+                import builtins
+
+                original_import = builtins.__import__
+
+                def mock_import(name, *args, **kwargs):
+                    if name == "yaml":
+                        raise ImportError("No module named 'yaml'")
+                    return original_import(name, *args, **kwargs)
+
+                with patch.object(builtins, "__import__", mock_import):
+                    model.to_yaml()
+
+
 class TestResourceList:
     def test_create_with_list(self):
         """ResourceList should be created with a list of items."""
@@ -148,6 +238,74 @@ class TestResourceList:
         resource_list = ResourceList[Item](root=[])
         assert len(resource_list) == 0
         assert list(resource_list) == []
+
+
+class TestResourceListExport:
+    """Tests for ResourceList export methods."""
+
+    def test_to_list_default(self):
+        """to_list should export items as list of dicts with camelCase keys."""
+
+        class Item(CamelModel):
+            item_id: int
+            item_name: str
+
+        items = [Item(item_id=1, item_name="a"), Item(item_id=2, item_name="b")]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_list()
+
+        assert result == [
+            {"itemId": 1, "itemName": "a"},
+            {"itemId": 2, "itemName": "b"},
+        ]
+
+    def test_to_list_snake_case(self):
+        """to_list with by_alias=False should use snake_case keys."""
+
+        class Item(CamelModel):
+            item_id: int
+
+        items = [Item(item_id=1)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_list(by_alias=False)
+
+        assert result == [{"item_id": 1}]
+
+    def test_to_json_default(self):
+        """to_json should export as JSON array string."""
+
+        class Item(CamelModel):
+            item_id: int
+
+        items = [Item(item_id=1), Item(item_id=2)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_json()
+
+        assert result == '[{"itemId": 1}, {"itemId": 2}]'
+
+    def test_to_json_with_indent(self):
+        """to_json with indent should format output."""
+
+        class Item(CamelModel):
+            item_id: int
+
+        items = [Item(item_id=1)]
+        resource_list = ResourceList[Item](root=items)
+        result = resource_list.to_json(indent=2)
+
+        assert "\n" in result
+        assert '"itemId": 1' in result
+
+    def test_to_list_empty(self):
+        """to_list should handle empty lists."""
+
+        class Item(CamelModel):
+            item_id: int
+
+        resource_list = ResourceList[Item](root=[])
+        result = resource_list.to_list()
+
+        assert result == []
 
 
 class TestResourceBase:
