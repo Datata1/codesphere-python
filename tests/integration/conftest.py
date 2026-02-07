@@ -1,8 +1,8 @@
 import logging
 import os
-import pytest
 from typing import AsyncGenerator, List, Optional
 
+import pytest
 from dotenv import load_dotenv
 
 from codesphere import CodesphereSDK
