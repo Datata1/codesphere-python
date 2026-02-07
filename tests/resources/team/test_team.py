@@ -18,6 +18,21 @@ class TestTeamsResource:
         assert all(isinstance(team, Team) for team in result)
 
     @pytest.mark.asyncio
+    async def test_list_items_have_http_client_injected(
+        self, teams_resource_factory, sample_team_list_data
+    ):
+        """Items returned from list() should have _http_client injected."""
+        resource, mock_client = teams_resource_factory(sample_team_list_data)
+
+        result = await resource.list()
+
+        for team in result:
+            assert hasattr(team, "_http_client")
+            assert team._http_client is not None
+            # Verify sub-resources are accessible without "detached model" error
+            _ = team.domains
+
+    @pytest.mark.asyncio
     async def test_list_teams_empty(self, teams_resource_factory):
         """List teams should handle empty response."""
         resource, _ = teams_resource_factory([])

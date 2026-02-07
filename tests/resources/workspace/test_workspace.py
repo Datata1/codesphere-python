@@ -63,6 +63,20 @@ class TestWorkspacesResource:
         assert isinstance(result, Workspace)
         mock_client.request.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_list_items_have_http_client_injected(
+        self, workspaces_resource_factory, sample_workspace_list_data
+    ):
+        """Items returned from list() should have _http_client injected and be able to call instance methods."""
+        resource, mock_client = workspaces_resource_factory(sample_workspace_list_data)
+
+        result = await resource.list(team_id=12345)
+
+        for workspace in result:
+            assert hasattr(workspace, "_http_client")
+            assert workspace._http_client is not None
+            _ = workspace.env_vars
+
 
 class TestWorkspaceModel:
     """Tests for the Workspace model and its methods."""

@@ -3,7 +3,7 @@ import logging
 from typing import Any, List, Optional, Type, get_args, get_origin
 
 import httpx
-from pydantic import BaseModel, PrivateAttr, ValidationError
+from pydantic import BaseModel, PrivateAttr, RootModel, ValidationError
 from pydantic.fields import FieldInfo
 
 from ..http_client import APIHttpClient
@@ -93,6 +93,14 @@ class APIRequestHandler:
     def _inject_client_into_model(self, model_instance: BaseModel) -> BaseModel:
         if hasattr(model_instance, "_http_client"):
             model_instance._http_client = self.http_client
+
+        if isinstance(model_instance, RootModel) and isinstance(
+            model_instance.root, list
+        ):
+            for item in model_instance.root:
+                if hasattr(item, "_http_client"):
+                    item._http_client = self.http_client
+
         return model_instance
 
     async def _parse_and_validate_response(

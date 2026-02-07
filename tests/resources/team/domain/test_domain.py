@@ -31,6 +31,20 @@ class TestTeamDomainManager:
         assert isinstance(result[0], Domain)
 
     @pytest.mark.asyncio
+    async def test_list_items_have_http_client_injected(
+        self, mock_http_client_for_resource, sample_domain_data
+    ):
+        """Items returned from list() should have _http_client injected."""
+        mock_client = mock_http_client_for_resource([sample_domain_data])
+        manager = TeamDomainManager(http_client=mock_client, team_id=12345)
+
+        result = await manager.list()
+
+        for domain in result:
+            assert hasattr(domain, "_http_client")
+            assert domain._http_client is not None
+
+    @pytest.mark.asyncio
     async def test_get_domain(self, mock_http_client_for_resource, sample_domain_data):
         """Get domain should return a single Domain model."""
         mock_client = mock_http_client_for_resource(sample_domain_data)

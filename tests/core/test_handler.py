@@ -1,8 +1,8 @@
 import pytest
-from typing import Optional
+from typing import Optional, List
 from unittest.mock import MagicMock
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, RootModel
 
 from codesphere.core.handler import _APIOperationExecutor, APIRequestHandler
 from codesphere.core.operations import APIOperation, AsyncCallable
@@ -147,3 +147,35 @@ class TestAPIRequestHandler:
         instance = ModelWithClient(id=1)
         handler._inject_client_into_model(instance)
         assert instance._http_client is mock_executor._http_client
+
+    @pytest.mark.asyncio
+    async def test_inject_client_into_root_model_items(
+        self, mock_executor, sample_operation
+    ):
+        """RootModel containers should have _http_client injected into each item in .root"""
+        mock_client = MagicMock()
+        mock_client.request = MagicMock()
+        mock_executor._http_client = mock_client
+
+        handler = APIRequestHandler(
+            executor=mock_executor,
+            operation=sample_operation,
+            kwargs={},
+        )
+
+        class ItemWithClient(BaseModel):
+            id: int
+            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+
+        class ResourceList(RootModel[List[ItemWithClient]]):
+            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+
+        item1 = ItemWithClient(id=1)
+        item2 = ItemWithClient(id=2)
+        resource_list = ResourceList(root=[item1, item2])
+
+        handler._inject_client_into_model(resource_list)
+
+        assert resource_list._http_client is mock_executor._http_client
+        for item in resource_list.root:
+            assert item._http_client is mock_executor._http_client
