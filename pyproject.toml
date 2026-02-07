@@ -38,33 +38,12 @@ packages = ["src/codesphere"]
 
 [project.optional-dependencies]
 dev = [
-    "commitizen>=4.8.3",
     "pre-commit>=4.2.0",
     "pytest>=8.4.0",
     "pytest-asyncio",
     "pytest-cov>=6.2.1",
     "ruff>=0.11.13",
     "bandit>=1.7.0",
-]
-
-[tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "v$version"
-version_scheme = "pep440"
-version_provider = "uv"
-update_changelog_on_bump = true
-major_version_zero = true
-style = [
-    ["qmark", "fg:#ff9d00 bold"],
-    ["question", "bold"],
-    ["answer", "fg:#ff9d00 bold"],
-    ["pointer", "fg:#ff9d00 bold"],
-    ["highlighted", "fg:#ff9d00 bold"],
-    ["selected", "fg:#cc5454"],
-    ["separator", "fg:#cc5454"],
-    ["instruction", ""],
-    ["text", ""],
-    ["disabled", "fg:#858585 italic"]
 ]
 
 [tool.pytest.ini_options]
