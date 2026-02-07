@@ -208,7 +208,6 @@ class TestSaveProfileIntegration:
         try:
             await workspace.landscape.save_profile(profile_name, profile)
 
-            # Verify profile was created
             profiles = await workspace.landscape.list_profiles()
             profile_names = [p.name for p in profiles]
             assert profile_name in profile_names
@@ -253,12 +252,10 @@ run: {}
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-overwrite-test"
 
-        # Create initial profile
         profile_v1 = (
             ProfileBuilder().prepare().add_step("echo 'version 1'").done().build()
         )
 
-        # Create updated profile
         profile_v2 = (
             ProfileBuilder().prepare().add_step("echo 'version 2'").done().build()
         )
@@ -267,7 +264,6 @@ run: {}
             await workspace.landscape.save_profile(profile_name, profile_v1)
             await workspace.landscape.save_profile(profile_name, profile_v2)
 
-            # Verify content was updated
             content = await workspace.landscape.get_profile(profile_name)
             assert "version 2" in content
 
@@ -331,14 +327,11 @@ class TestDeleteProfileIntegration:
         profile = ProfileBuilder().build()
         await workspace.landscape.save_profile(profile_name, profile)
 
-        # Verify it exists
         profiles = await workspace.landscape.list_profiles()
         assert profile_name in [p.name for p in profiles]
 
-        # Delete it
         await workspace.landscape.delete_profile(profile_name)
 
-        # Verify it's gone
         profiles = await workspace.landscape.list_profiles()
         assert profile_name not in [p.name for p in profiles]
 
@@ -350,7 +343,6 @@ class TestDeleteProfileIntegration:
         """delete_profile should not raise an error for non-existent profiles."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Should not raise
         await workspace.landscape.delete_profile("nonexistent-profile-xyz")
 
 
@@ -403,7 +395,6 @@ class TestProfileBuilderIntegration:
 
             content = await workspace.landscape.get_profile(profile_name)
 
-            # Verify key elements are present
             assert "schemaVersion: v0.2" in content
             assert "frontend:" in content
             assert "backend:" in content
@@ -461,7 +452,6 @@ class TestLandscapeDeploymentWorkflow:
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-workflow-test"
 
-        # Step 1: Create a valid profile with ProfileBuilder
         profile = (
             ProfileBuilder()
             .prepare()
@@ -479,31 +469,24 @@ class TestLandscapeDeploymentWorkflow:
         )
 
         try:
-            # Step 2: Save the profile
             await workspace.landscape.save_profile(profile_name, profile)
 
-            # Verify profile exists
             profiles = await workspace.landscape.list_profiles()
             profile_names = [p.name for p in profiles]
             assert profile_name in profile_names, "Profile should exist after saving"
 
-            # Verify profile content
             content = await workspace.landscape.get_profile(profile_name)
             assert "schemaVersion: v0.2" in content
             assert "web:" in content
             assert f"plan: {test_plan_id}" in content
 
-            # Step 3: Deploy the landscape
             await workspace.landscape.deploy(profile=profile_name)
 
-            # Step 4: Teardown the landscape
             await workspace.landscape.teardown()
 
         finally:
-            # Step 5: Delete the profile
             await workspace.landscape.delete_profile(profile_name)
 
-            # Verify profile is deleted
             profiles = await workspace.landscape.list_profiles()
             profile_names = [p.name for p in profiles]
             assert profile_name not in profile_names, (
@@ -536,16 +519,12 @@ class TestLandscapeDeploymentWorkflow:
         )
 
         try:
-            # Save profile
             await workspace.landscape.save_profile(profile_name, profile)
 
-            # Deploy
             await workspace.landscape.deploy(profile=profile_name)
 
-            # Teardown
             await workspace.landscape.teardown()
 
-            # Profile should still exist after teardown
             profiles = await workspace.landscape.list_profiles()
             profile_names = [p.name for p in profiles]
             assert profile_name in profile_names, (
@@ -553,7 +532,6 @@ class TestLandscapeDeploymentWorkflow:
             )
 
         finally:
-            # Cleanup
             await workspace.landscape.delete_profile(profile_name)
 
     async def test_profile_deletion_removes_from_list(
@@ -576,17 +554,13 @@ class TestLandscapeDeploymentWorkflow:
             .build()
         )
 
-        # Create profile
         await workspace.landscape.save_profile(profile_name, profile)
 
-        # Verify it exists
         profiles_before = await workspace.landscape.list_profiles()
         assert profile_name in [p.name for p in profiles_before]
 
-        # Delete profile
         await workspace.landscape.delete_profile(profile_name)
 
-        # Verify it's gone
         profiles_after = await workspace.landscape.list_profiles()
         assert profile_name not in [p.name for p in profiles_after], (
             f"Profile '{profile_name}' should be removed after deletion"
