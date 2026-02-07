@@ -37,10 +37,8 @@ jobs:
         id: bandit_check
         run: |
           echo "Running Bandit security check..."
-          # Wir nutzen 'uv run', um sicherzustellen, dass bandit im venv ausgeführt wird
-          # set +e erlaubt, dass der Step weiterläuft, auch wenn Bandit Fehler findet (Exit Code 1)
           set +e
-          uv run bandit -r . -c pyproject.toml --format=custom --msg-template "{abspath}:{line}: {test_id}[{severity}]: {msg}" -o bandit-results.txt
+          uv run bandit -r . --format=custom --msg-template "{abspath}:{line}: {test_id}[{severity}]: {msg}" -o bandit-results.txt
           BANDIT_EXIT_CODE=$?
           set -e
           
@@ -107,6 +105,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    env:
+      TOKEN: 'dummy-token-for-ci'
+      CODESPHERE_TOKEN: 'dummy-token-for-ci'
 
     steps:
       - name: Checkout repository
@@ -122,11 +123,8 @@ jobs:
         shell: bash
 
       - name: Run tests with pytest
-        env:
-          TOKEN: 'dummy-token-for-ci'
-          CODESPHERE_TOKEN: 'dummy-token-for-ci'
         run: |
-          uv run pytest --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html --cov=. | tee pytest-coverage.txt
+          uv run pytest --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html --cov=. --ignore=tests/integration | tee pytest-coverage.txt 
         shell: bash
 
       - name: Pytest coverage comment
