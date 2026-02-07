@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-<h1 align="center">Codesphere Python SDK</h1>
+<h1 align="center">Python SDK</h1>
 
 <p align="center">
   <a href="https://pypi.org/project/codesphere/">
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <strong>The official Python client for the [Codesphere API](https://codesphere.com/api/swagger-ui/).</strong>
+  <strong>The official Python client for the <a href="https://codesphere.com/api/swagger-ui/">Codesphere API</a>.</strong>
 </p>
 
 
@@ -74,11 +74,9 @@ await team.delete()
 workspaces = await sdk.workspaces.list(team_id=123)
 workspace = await sdk.workspaces.get(workspace_id=456)
 
-# Execute commands
 result = await workspace.execute_command("ls -la")
 print(result.output)
 
-# Manage environment variables
 await workspace.env_vars.set([{"name": "API_KEY", "value": "secret"}])
 env_vars = await workspace.env_vars.get()
 ```
