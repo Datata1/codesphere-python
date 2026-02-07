@@ -1,32 +1,22 @@
 import pytest
 import httpx
-from unittest.mock import patch, AsyncMock
 from dataclasses import dataclass
-from typing import Optional, Any, Type
-from pydantic import BaseModel
+from typing import Any, Optional, Type
+from unittest.mock import AsyncMock, patch
 
-from codesphere.client import APIHttpClient, AuthenticationError
+from pydantic import BaseModel
 
 
 class DummyModel(BaseModel):
-    """Ein einfaches Pydantic-Modell für Testzwecke."""
+    """A simple Pydantic model for testing."""
 
     name: str
     value: int
 
 
 @dataclass
-class InitTestCase:
-    """Definiert einen Testfall für die Initialisierung des APIHttpClient."""
-
-    name: str
-    token_env_var: Optional[str]
-    expected_exception: Optional[Type[Exception]] = None
-
-
-@dataclass
 class RequestTestCase:
-    """Definiert einen Testfall für die Request-Methoden des APIHttpClient."""
+    """Test case for HTTP request methods."""
 
     name: str
     method: str
@@ -36,52 +26,39 @@ class RequestTestCase:
     expected_exception: Optional[Type[Exception]] = None
 
 
-init_test_cases = [
-    InitTestCase(
-        name="Erfolgreiche Initialisierung mit Token",
-        token_env_var="secret-token",
-        expected_exception=None,
-    ),
-    InitTestCase(
-        name="Fehlgeschlagene Initialisierung ohne Token",
-        token_env_var=None,
-        expected_exception=AuthenticationError,
-    ),
-]
-
 request_test_cases = [
     RequestTestCase(
-        name="GET-Request erfolgreich",
+        name="GET request successful",
         method="get",
         use_context_manager=True,
     ),
     RequestTestCase(
-        name="POST-Request mit Pydantic-Modell erfolgreich",
+        name="POST request with Pydantic model successful",
         method="post",
         use_context_manager=True,
         payload=DummyModel(name="test", value=123),
     ),
     RequestTestCase(
-        name="PUT-Request mit Dictionary erfolgreich",
+        name="PUT request with dictionary successful",
         method="put",
         use_context_manager=True,
         payload={"key": "value"},
     ),
     RequestTestCase(
-        name="Request schlägt fehl ohne Context Manager",
+        name="Request fails without context manager",
         method="get",
         use_context_manager=False,
         expected_exception=RuntimeError,
     ),
     RequestTestCase(
-        name="Request mit 404-Fehler löst HTTPStatusError aus",
+        name="Request with 404 error raises HTTPStatusError",
         method="get",
         use_context_manager=True,
         mock_status_code=404,
         expected_exception=httpx.HTTPStatusError,
     ),
     RequestTestCase(
-        name="Request mit 500-Fehler löst HTTPStatusError aus",
+        name="Request with 500 error raises HTTPStatusError",
         method="post",
         use_context_manager=True,
         mock_status_code=500,
@@ -90,57 +67,65 @@ request_test_cases = [
 ]
 
 
-@pytest.mark.parametrize("case", init_test_cases, ids=[c.name for c in init_test_cases])
-def test_client_initialization(case: InitTestCase):
-    """
-    Testet die Initialisierungslogik des APIHttpClient.
-    """
-    with patch("os.environ.get", return_value=case.token_env_var):
-        if case.expected_exception:
-            with pytest.raises(case.expected_exception):
-                APIHttpClient()
-        else:
-            client = APIHttpClient()
-            assert client._token == case.token_env_var
+class TestAPIHttpClient:
+    """Tests for the APIHttpClient class."""
 
+    def test_client_initialization(self, api_http_client, mock_token):
+        """Client should initialize with token from settings."""
+        assert api_http_client._token == mock_token
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "case", request_test_cases, ids=[c.name for c in request_test_cases]
-)
-async def test_client_requests(case: RequestTestCase):
-    """
-    Testet die verschiedenen Request-Methoden (get, post, etc.) und deren Verhalten.
-    """
-    with patch("os.environ.get", return_value="fake-token"):
-        client = APIHttpClient()
+    def test_client_not_connected_initially(self, api_http_client):
+        """Client should not be connected before entering context."""
+        assert api_http_client._client is None
 
+    @pytest.mark.asyncio
+    async def test_client_connects_on_enter(self, api_http_client, mock_async_client):
+        """Client should connect when entering context manager."""
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            async with api_http_client as client:
+                assert client._client is not None
+
+    @pytest.mark.asyncio
+    async def test_client_disconnects_on_exit(self, api_http_client, mock_async_client):
+        """Client should disconnect when exiting context manager."""
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            async with api_http_client:
+                pass
+            assert api_http_client._client is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "case", request_test_cases, ids=[c.name for c in request_test_cases]
+    )
+    async def test_client_requests(
+        self,
+        case: RequestTestCase,
+        api_http_client,
+        mock_response_factory,
+    ):
+        """Test various HTTP request scenarios."""
+        mock_response = mock_response_factory.create(
+            status_code=case.mock_status_code,
+            json_data={},
+        )
         mock_http_client = AsyncMock(spec=httpx.AsyncClient)
-        mock_response = AsyncMock(spec=httpx.Response)
-        mock_response.status_code = case.mock_status_code
-
-        if 400 <= case.mock_status_code < 600:
-            mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-                f"{case.mock_status_code} Error",
-                request=AsyncMock(),
-                response=mock_response,
-            )
-
         mock_http_client.request.return_value = mock_response
 
         if case.expected_exception:
             with pytest.raises(case.expected_exception):
                 with patch("httpx.AsyncClient", return_value=mock_http_client):
                     if case.use_context_manager:
-                        async with client:
-                            await getattr(client, case.method)("/test-endpoint")
+                        async with api_http_client:
+                            await getattr(api_http_client, case.method)(
+                                "/test-endpoint"
+                            )
                     else:
-                        await getattr(client, case.method)("/test-endpoint")
+                        await getattr(api_http_client, case.method)("/test-endpoint")
             return
 
         with patch("httpx.AsyncClient", return_value=mock_http_client):
-            async with client:
-                request_func = getattr(client, case.method)
+            async with api_http_client:
+                request_func = getattr(api_http_client, case.method)
                 response = await request_func("/test-endpoint", json=case.payload)
 
                 mock_http_client.request.assert_awaited_once()
@@ -156,3 +141,46 @@ async def test_client_requests(case: RequestTestCase):
                     assert call_args.kwargs["json"] == case.payload
 
                 assert response.status_code == case.mock_status_code
+
+
+class TestCodesphereSDK:
+    """Tests for the CodesphereSDK class."""
+
+    def test_sdk_has_teams_resource(self, sdk_client):
+        """SDK should have teams resource attribute."""
+        from codesphere.resources.team import TeamsResource
+
+        assert hasattr(sdk_client, "teams")
+        assert isinstance(sdk_client.teams, TeamsResource)
+
+    def test_sdk_has_workspaces_resource(self, sdk_client):
+        """SDK should have workspaces resource attribute."""
+        from codesphere.resources.workspace import WorkspacesResource
+
+        assert hasattr(sdk_client, "workspaces")
+        assert isinstance(sdk_client.workspaces, WorkspacesResource)
+
+    def test_sdk_has_metadata_resource(self, sdk_client):
+        """SDK should have metadata resource attribute."""
+        from codesphere.resources.metadata import MetadataResource
+
+        assert hasattr(sdk_client, "metadata")
+        assert isinstance(sdk_client.metadata, MetadataResource)
+
+    @pytest.mark.asyncio
+    async def test_sdk_context_manager(self, sdk_client, mock_async_client):
+        """SDK should work as async context manager."""
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            async with sdk_client as sdk:
+                assert sdk is sdk_client
+                assert sdk._http_client._client is not None
+
+    @pytest.mark.asyncio
+    async def test_sdk_open_and_close(self, sdk_client, mock_async_client):
+        """SDK should support explicit open() and close() methods."""
+        with patch("httpx.AsyncClient", return_value=mock_async_client):
+            await sdk_client.open()
+            assert sdk_client._http_client._client is not None
+
+            await sdk_client.close()
+            assert sdk_client._http_client._client is None

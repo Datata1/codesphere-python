@@ -44,6 +44,7 @@ dev = [
     "pytest-asyncio",
     "pytest-cov>=6.2.1",
     "ruff>=0.11.13",
+    "bandit>=1.7.0",
 ]
 
 [tool.commitizen]
@@ -74,6 +75,10 @@ pythonpath = [
 python_files = "test_*.py *_test.py"
 python_functions = "test_*"
 python_classes = "Test*"
+asyncio_mode = "auto"
+markers = [
+    "integration: mark test as integration test (requires API token and --run-integration flag)",
+]
 
 [tool.coverage.run]
 source = ["api", "handler", "tasks"]
@@ -106,7 +111,7 @@ include_namespace_packages = true
 directory = "test-results"
 
 [tool.bandit]
-targets = ["src/codesphere_sdk/__init__.py"]  # add here folders to check
+targets = ["src/codesphere"]
 exclude_dirs = ["tests", ".venv", ".uv", "examples", "docs", ".github", "scripts"]
 skips = ["B101"]
 

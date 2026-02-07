@@ -25,7 +25,7 @@ class TeamsResource(ResourceBase):
     get_team_op: AsyncCallable[Team] = Field(default=_GET_TEAM_OP, exclude=True)
 
     async def get(self, team_id: int) -> Team:
-        return await self.get_team_op(data=team_id)
+        return await self.get_team_op(team_id=team_id)
 
     create_team_op: AsyncCallable[Team] = Field(default=_CREATE_TEAM_OP, exclude=True)
 

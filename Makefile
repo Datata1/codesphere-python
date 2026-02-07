@@ -1,4 +1,4 @@
-.PHONY: help install commit lint format test bump
+.PHONY: help install commit lint format test test-integration test-unit bump
 
 .DEFAULT_GOAL := help
 
@@ -33,9 +33,25 @@ format: ## Formats code with ruff
 	@echo ">>> Formatting code with ruff..."
 	uv run ruff format src
 
-test: ## Runs tests with pytest
-	@echo ">>> Running tests with pytest..."
+test: ## Runs all tests with pytest
+	@echo ">>> Running all tests with pytest..."
 	uv run pytest
+
+test-unit: ## Runs only unit tests (excludes integration tests)
+	@echo ">>> Running unit tests with pytest..."
+	uv run pytest --ignore=tests/integration
+
+test-integration: ## Runs integration tests (requires CS_TOKEN env var or .env file)
+	@echo ">>> Running integration tests with pytest..."
+	@if [ -f .env ]; then \
+		echo "Loading environment from .env file..."; \
+		set -a; . ./.env; set +a; \
+	fi; \
+	if [ -z "$${CS_TOKEN}" ]; then \
+		echo "\033[0;33mWarning: CS_TOKEN not set. Create a .env file or export CS_TOKEN=your-api-token\033[0m"; \
+		exit 1; \
+	fi; \
+	uv run pytest tests/integration -v --run-integration
 
 release: ## Pushes a new tag and release
 	@echo ">>> Starting release process..."

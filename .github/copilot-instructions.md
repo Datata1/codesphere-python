@@ -1,116 +1,53 @@
-# Copilot Instructions for Codesphere Python SDK
+# Codesphere SDK - AI Instructions
 
-## Project Context
-
-This repository contains the **Codesphere Python SDK**, an official asynchronous Python client for the [Codesphere Public API](https://codesphere.com/api/swagger-ui/). It provides a high-level, type-safe interface for managing Codesphere resources including Teams, Workspaces, Domains, Environment Variables, and Metadata.
-
-The SDK follows a resource-based architecture where API operations are defined declaratively and executed through a centralized handler system.
+## Architecture & Core
+- **Async-First:** All I/O operations MUST be `async/await`.
+- **Base Classes:**
+  - Models: Use `core.base.CamelModel` (handles camelCase API conversion).
+  - Resources: Inherit from `ResourceBase` + `_APIOperationExecutor`.
+- **HTTP:** Use `APIHttpClient` (wraps httpx). Raise `httpx.HTTPStatusError` for API errors.
 
 ## Project Structure
+- `src/codesphere/core/`: Base classes & handlers.
+- `src/codesphere/resources/`: Resource implementations (follow `schemas.py`, `operations.py`, `resources.py` pattern).
+- `tests/integration/`: Real API tests (require `CS_TOKEN`).
+- `tests/unit/`: Mocked logic tests.
 
-```
-src/codesphere/
-├── __init__.py           # Public API exports
-├── client.py             # Main SDK entry point (CodesphereSDK)
-├── config.py             # Settings via pydantic-settings
-├── exceptions.py         # Custom exception classes
-├── http_client.py        # Async HTTP client wrapper (APIHttpClient)
-├── utils.py              # Utility functions
-├── core/                 # Core SDK infrastructure
-│   ├── base.py           # Base classes (ResourceBase, CamelModel, ResourceList)
-│   ├── handler.py        # API operation executor (_APIOperationExecutor, APIRequestHandler)
-│   └── operations.py     # APIOperation definition and AsyncCallable type
-└── resources/            # API resource implementations
-    ├── metadata/         # Datacenters, Plans, Images
-    ├── team/             # Teams and nested Domains
-    │   └── domain/       # Domain management (schemas, operations, manager)
-    └── workspace/        # Workspaces and nested resources
-        ├── envVars/      # Environment variables management
-        ├── landscape/    # (Placeholder)
-        └── pipeline/     # (Placeholder)
+## Resource Implementation Pattern
+When adding resources, strictly follow this pattern:
 
-tests/                    # Test files mirroring src structure
-examples/                 # Usage examples organized by resource type
-```
+1. **`schemas.py`**: Define Pydantic models (inherit `CamelModel`).
+2. **`operations.py`**: Define `APIOperation` constants.
+   ```python
+   _GET_OP = APIOperation(method="GET", endpoint_template="/res/{id}", response_model=ResModel)
+   ```
+3. **`resources.py`**: Implementation logic.
+   ```python
+   class MyResource(ResourceBase, _APIOperationExecutor):
+       # Operation callable (exclude from model dump)
+       delete_op: AsyncCallable[None] = Field(default=_DELETE_OP, exclude=True)
+       
+       async def delete(self) -> None:
+           await self.delete_op()
+   ```
 
-## Coding Guidelines
+## Testing Rules
+- **Unit Tests (`tests/`):** MUST mock all HTTP calls (`unittest.mock.AsyncMock`).
+- **Integration Tests (`tests/integration/`):**
+  - Use `pytest.mark.integration`.
+  - Use provided fixtures: `sdk_client` (fresh client), `test_team_id`, `test_workspace`.
+  - **Cleanup:** Always delete created resources in a `try...finally` block.
 
-### General Principles
+## Key Fixtures & Env Vars
+| Fixture | Scope | Description |
+|---|---|---|
+| `sdk_client` | func | Fresh `CodesphereSDK` instance. |
+| `test_team_id` | session | ID from `CS_TEST_TEAM_ID` (or default). |
+| `integration_token` | session | Token from `CS_TOKEN`. |
 
-- **Async-First**: All API operations MUST be async. Use `async/await` syntax consistently.
-- **Type Hints**: Always provide complete type annotations for function parameters, return values, and class attributes.
-- **Pydantic Models**: Use Pydantic `BaseModel` for all data structures. Prefer `CamelModel` for API payloads to handle camelCase conversion.
-
-### Naming Conventions
-
-- **Variables/Functions**: Use `snake_case` (e.g., `workspace_id`, `list_datacenters`)
-- **Classes**: Use `PascalCase` (e.g., `WorkspaceCreate`, `APIHttpClient`)
-- **Constants/Operations**: Use `UPPER_SNAKE_CASE` with leading underscore for internal operations (e.g., `_LIST_BY_TEAM_OP`)
-- **Private Attributes**: Prefix with underscore (e.g., `_http_client`, `_token`)
-
-### Resource Pattern
-
-When adding new API resources, follow this structure:
-
-1. **schemas.py**: Define Pydantic models for Create, Base, Update, and the main resource class
-2. **operations.py**: Define `APIOperation` instances for each endpoint
-3. **resources.py**: Create the resource class extending `ResourceBase` with operation fields
-4. **__init__.py**: Export public classes
-
-```python
-# Example operation definition
-_GET_OP = APIOperation(
-    method="GET",
-    endpoint_template="/resources/{resource_id}",
-    response_model=ResourceModel,
-)
-
-# Example resource method
-async def get(self, resource_id: int) -> ResourceModel:
-    return await self.get_op(data=resource_id)
-```
-
-### Model Guidelines
-
-- Extend `CamelModel` for API request/response models (automatic camelCase aliasing)
-- Extend `_APIOperationExecutor` for models that can perform operations on themselves
-- Use `Field(default=..., exclude=True)` for operation callables
-- Use `@cached_property` for lazy-loaded sub-managers (e.g., `workspace.env_vars`)
-
-```python
-class Workspace(WorkspaceBase, _APIOperationExecutor):
-    delete_op: AsyncCallable[None] = Field(default=_DELETE_OP, exclude=True)
-    
-    async def delete(self) -> None:
-        await self.delete_op()
-```
-
-### Error Handling
-
-- Raise `httpx.HTTPStatusError` for HTTP errors (handled by `APIHttpClient`)
-- Raise `RuntimeError` for SDK misuse (e.g., accessing resources without context manager)
-- Use custom exceptions from `exceptions.py` for SDK-specific errors
-
-### Testing
-
-- Use `pytest.mark.asyncio` for async tests
-- Use `@dataclass` for test case definitions with parametrization
-- Mock `httpx.AsyncClient` for HTTP request testing
-- Test files should mirror the source structure in `tests/`
-
-### Code Style
-
-- Line length: 88 characters (Ruff/Black standard)
-- Indentation: 4 spaces
-- Quotes: Double quotes for strings
-- Imports: Group stdlib, third-party, and local imports
-
-### Development Commands
-
-```bash
-make install    # Set up development environment
-make lint       # Run Ruff linter
-make format     # Format code with Ruff
-make test       # Run pytest
-make commit     # Guided commit with Commitizen
-```
+## Style & Naming
+- **Classes:** PascalCase (`WorkspaceCreate`).
+- **Vars:** snake_case.
+- **Internal Ops:** UPPER_SNAKE (`_LIST_OP`).
+- **Private:** Leading underscore (`_http_client`).
+- **Typing:** Strict type hints required.
