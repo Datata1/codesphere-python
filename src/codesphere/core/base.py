@@ -68,7 +68,7 @@ class CamelModel(BaseModel):
             YAML string representation of the model.
         """
         data = self.to_dict(by_alias=by_alias, exclude_none=exclude_none)
-        return yaml.dump(
+        return yaml.safe_dump(
             data, default_flow_style=False, allow_unicode=True, sort_keys=False
         )
 
