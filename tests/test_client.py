@@ -1,10 +1,12 @@
-import pytest
-import httpx
 from dataclasses import dataclass
 from typing import Any, Optional, Type
 from unittest.mock import AsyncMock, patch
 
+import httpx
+import pytest
 from pydantic import BaseModel
+
+from codesphere.exceptions import APIError, NotFoundError
 
 
 class DummyModel(BaseModel):
@@ -51,18 +53,18 @@ request_test_cases = [
         expected_exception=RuntimeError,
     ),
     RequestTestCase(
-        name="Request with 404 error raises HTTPStatusError",
+        name="Request with 404 error raises NotFoundError",
         method="get",
         use_context_manager=True,
         mock_status_code=404,
-        expected_exception=httpx.HTTPStatusError,
+        expected_exception=NotFoundError,
     ),
     RequestTestCase(
-        name="Request with 500 error raises HTTPStatusError",
+        name="Request with 500 error raises APIError",
         method="post",
         use_context_manager=True,
         mock_status_code=500,
-        expected_exception=httpx.HTTPStatusError,
+        expected_exception=APIError,
     ),
 ]
 

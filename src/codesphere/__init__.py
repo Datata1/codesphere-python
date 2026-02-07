@@ -20,34 +20,55 @@ Basic Usage:
 """
 
 import logging
-from .client import CodesphereSDK
 
-from .exceptions import CodesphereError, AuthenticationError
+from .client import CodesphereSDK
+from .exceptions import (
+    APIError,
+    AuthenticationError,
+    AuthorizationError,
+    CodesphereError,
+    ConflictError,
+    NetworkError,
+    NotFoundError,
+    RateLimitError,
+    TimeoutError,
+    ValidationError,
+)
+from .resources.metadata import Characteristic, Datacenter, Image, WsPlan
 from .resources.team import (
-    Team,
-    TeamCreate,
-    TeamBase,
-    Domain,
     CustomDomainConfig,
-    DomainVerificationStatus,
+    Domain,
     DomainBase,
     DomainRouting,
+    DomainVerificationStatus,
+    Team,
+    TeamBase,
+    TeamCreate,
 )
 from .resources.workspace import (
     Workspace,
     WorkspaceCreate,
-    WorkspaceUpdate,
     WorkspaceStatus,
+    WorkspaceUpdate,
 )
 from .resources.workspace.envVars import EnvVar
-from .resources.metadata import Datacenter, Characteristic, WsPlan, Image
 
 logging.getLogger("codesphere").addHandler(logging.NullHandler())
 
 __all__ = [
     "CodesphereSDK",
+    # Exceptions
     "CodesphereError",
     "AuthenticationError",
+    "AuthorizationError",
+    "NotFoundError",
+    "ValidationError",
+    "ConflictError",
+    "RateLimitError",
+    "APIError",
+    "NetworkError",
+    "TimeoutError",
+    # Resources
     "Team",
     "TeamCreate",
     "TeamBase",
@@ -64,6 +85,5 @@ __all__ = [
     "CustomDomainConfig",
     "DomainVerificationStatus",
     "DomainBase",
-    "DomainsResource",
     "DomainRouting",
 ]

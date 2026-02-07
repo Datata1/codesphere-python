@@ -1,8 +1,8 @@
-import pytest
 from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
 
 
 class MockResponseFactory:
@@ -18,12 +18,18 @@ class MockResponseFactory:
         mock_response = AsyncMock(spec=httpx.Response)
         mock_response.status_code = status_code
         mock_response.json.return_value = json_data if json_data is not None else {}
+        mock_response.text = ""
+
+        mock_response.is_success = 200 <= status_code < 400
+
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_request.method = "GET"
+        mock_request.url = "https://test.com/test-endpoint"
+        mock_response.request = mock_request
+
+        mock_response.headers = {}
 
         if raise_for_status or 400 <= status_code < 600:
-            mock_request = MagicMock(spec=httpx.Request)
-            mock_request.method = "GET"
-            mock_request.url = "https://test.com/test-endpoint"
-
             mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
                 f"{status_code} Error",
                 request=mock_request,
