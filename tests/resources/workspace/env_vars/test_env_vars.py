@@ -1,17 +1,8 @@
-"""
-Tests for Environment Variables: WorkspaceEnvVarManager and EnvVar model.
-"""
-
 import pytest
 from dataclasses import dataclass
 from typing import Any, Optional
 
 from codesphere.resources.workspace.envVars import EnvVar, WorkspaceEnvVarManager
-
-
-# -----------------------------------------------------------------------------
-# Test Cases
-# -----------------------------------------------------------------------------
 
 
 @dataclass
@@ -22,11 +13,6 @@ class EnvVarOperationTestCase:
     operation: str
     input_data: Optional[Any] = None
     mock_response: Optional[Any] = None
-
-
-# -----------------------------------------------------------------------------
-# WorkspaceEnvVarManager Tests
-# -----------------------------------------------------------------------------
 
 
 class TestWorkspaceEnvVarManager:
@@ -109,11 +95,6 @@ class TestWorkspaceEnvVarManager:
         await manager.delete(items=[])
 
         mock_client.request.assert_not_awaited()
-
-
-# -----------------------------------------------------------------------------
-# EnvVar Model Tests
-# -----------------------------------------------------------------------------
 
 
 class TestEnvVarModel:

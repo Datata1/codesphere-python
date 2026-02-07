@@ -1,10 +1,4 @@
-"""
-Tests for Domain resources: TeamDomainManager and Domain model.
-"""
-
 import pytest
-from dataclasses import dataclass
-from typing import Any, Optional
 
 from codesphere.resources.team.domain.resources import Domain
 from codesphere.resources.team.domain.manager import TeamDomainManager
@@ -13,26 +7,6 @@ from codesphere.resources.team.domain.schemas import (
     DomainRouting,
     DomainVerificationStatus,
 )
-
-
-# -----------------------------------------------------------------------------
-# Test Cases
-# -----------------------------------------------------------------------------
-
-
-@dataclass
-class DomainOperationTestCase:
-    """Test case for domain operations."""
-
-    name: str
-    operation: str
-    input_data: Optional[Any] = None
-    mock_response: Optional[Any] = None
-
-
-# -----------------------------------------------------------------------------
-# TeamDomainManager Tests
-# -----------------------------------------------------------------------------
 
 
 class TestTeamDomainManager:
@@ -109,11 +83,6 @@ class TestTeamDomainManager:
         assert isinstance(result, Domain)
 
 
-# -----------------------------------------------------------------------------
-# Domain Model Tests
-# -----------------------------------------------------------------------------
-
-
 class TestDomainModel:
     """Tests for the Domain model and its methods."""
 
@@ -145,11 +114,6 @@ class TestDomainModel:
         result = await domain.verify_status()
 
         assert isinstance(result, DomainVerificationStatus)
-
-
-# -----------------------------------------------------------------------------
-# DomainRouting Tests
-# -----------------------------------------------------------------------------
 
 
 class TestDomainRouting:
@@ -187,11 +151,6 @@ class TestDomainRouting:
         result = routing.add("/test", [1])
 
         assert result is routing
-
-
-# -----------------------------------------------------------------------------
-# CustomDomainConfig Tests
-# -----------------------------------------------------------------------------
 
 
 class TestCustomDomainConfig:

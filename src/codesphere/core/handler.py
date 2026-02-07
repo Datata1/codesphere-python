@@ -34,6 +34,13 @@ class _APIOperationExecutor:
         handler = APIRequestHandler(executor=self, operation=operation, kwargs=kwargs)
         return await handler.execute()
 
+    def validate_http_client(self) -> APIHttpClient:
+        if self._http_client is None or not hasattr(self._http_client, "request"):
+            raise RuntimeError(
+                "Cannot access resource on a detached model. HTTP client missing."
+            )
+        return self._http_client
+
 
 class APIRequestHandler:
     def __init__(
@@ -42,7 +49,7 @@ class APIRequestHandler:
         self.executor = executor
         self.operation = operation
         self.kwargs = kwargs
-        self.http_client = executor._http_client
+        self.http_client = getattr(executor, "_http_client", None)
 
     async def execute(self) -> Any:
         endpoint, request_kwargs = self._prepare_request_args()
@@ -59,8 +66,10 @@ class APIRequestHandler:
         format_args = {}
         format_args.update(self.kwargs)
         format_args.update(self.executor.__dict__)
+
         if isinstance(self.executor, BaseModel):
             format_args.update(self.executor.model_dump())
+
         format_args.update(self.kwargs)
 
         endpoint = self.operation.endpoint_template.format(**format_args)
@@ -78,11 +87,8 @@ class APIRequestHandler:
     async def _make_request(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> httpx.Response:
-        if self.http_client is None or not hasattr(self.http_client, "request"):
-            raise RuntimeError("HTTP Client is not initialized.")
-        return await self.http_client.request(
-            method=method, endpoint=endpoint, **kwargs
-        )
+        client = self.executor.validate_http_client()
+        return await client.request(method=method, endpoint=endpoint, **kwargs)
 
     def _inject_client_into_model(self, model_instance: BaseModel) -> BaseModel:
         if hasattr(model_instance, "_http_client"):
@@ -95,7 +101,7 @@ class APIRequestHandler:
         response_model: Type[BaseModel] | Type[List[BaseModel]] | None,
         endpoint_for_logging: str,
     ) -> Any:
-        if response_model is None or response_model is type(None):
+        if response_model in (None, type(None)):
             return None
 
         try:

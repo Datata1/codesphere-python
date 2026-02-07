@@ -1,7 +1,3 @@
-"""
-Tests for core operations: APIOperation and AsyncCallable.
-"""
-
 import pytest
 from dataclasses import dataclass
 from typing import Optional, Type
@@ -9,11 +5,6 @@ from typing import Optional, Type
 from pydantic import BaseModel
 
 from codesphere.core.operations import APIOperation
-
-
-# -----------------------------------------------------------------------------
-# Test Models
-# -----------------------------------------------------------------------------
 
 
 class SampleInputModel(BaseModel):
@@ -28,11 +19,6 @@ class SampleResponseModel(BaseModel):
 
     id: int
     status: str
-
-
-# -----------------------------------------------------------------------------
-# Test Cases
-# -----------------------------------------------------------------------------
 
 
 @dataclass
@@ -78,14 +64,7 @@ api_operation_test_cases = [
 ]
 
 
-# -----------------------------------------------------------------------------
-# APIOperation Tests
-# -----------------------------------------------------------------------------
-
-
 class TestAPIOperation:
-    """Tests for the APIOperation class."""
-
     @pytest.mark.parametrize(
         "case", api_operation_test_cases, ids=[c.name for c in api_operation_test_cases]
     )
@@ -120,7 +99,7 @@ class TestAPIOperation:
         assert copied.method == "POST"
         assert copied.endpoint_template == original.endpoint_template
         assert copied.response_model == original.response_model
-        assert original.method == "GET"  # Original unchanged
+        assert original.method == "GET"
 
     def test_operation_with_path_parameters(self):
         """Test endpoint_template with multiple path parameters."""
@@ -130,7 +109,6 @@ class TestAPIOperation:
             response_model=SampleResponseModel,
         )
 
-        # Verify the template contains expected placeholders
         assert "{team_id}" in operation.endpoint_template
         assert "{domain_name}" in operation.endpoint_template
 

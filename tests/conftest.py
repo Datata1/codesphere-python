@@ -1,7 +1,3 @@
-"""
-Shared pytest fixtures for the Codesphere SDK test suite.
-"""
-
 import pytest
 from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch

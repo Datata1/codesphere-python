@@ -1,20 +1,7 @@
 name: Integration Tests
 
 on:
-  # Manual trigger with optional inputs
   workflow_dispatch:
-    inputs:
-      test_team_id:
-        description: "Team ID to use for testing (optional)"
-        required: false
-        type: string
-      test_dc_id:
-        description: "Datacenter ID for test resources"
-        required: false
-        default: "1"
-        type: string
-
-  # Run on pull requests
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -24,6 +11,8 @@ on:
 
 permissions:
   contents: read
+  checks: write
+  pull-requests: write
 
 env:
   PYTHON_VERSION: "3.12"
@@ -32,8 +21,7 @@ jobs:
   integration-tests:
     name: Run Integration Tests
     runs-on: ubuntu-latest
-    # Only run if the secret is available (prevents failures on forks)
-    if: ${{ github.repository == 'Datata1/codesphere-python' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'Datata1/codesphere-python' }}
 
     steps:
       - name: Checkout repository
@@ -43,6 +31,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
+          enable-cache: true
 
       - name: Install dependencies
         run: uv sync --extra dev
@@ -50,8 +39,8 @@ jobs:
       - name: Run integration tests
         env:
           CS_TOKEN: ${{ secrets.CS_TOKEN }}
-          CS_TEST_TEAM_ID: ${{ inputs.test_team_id || secrets.CS_TEST_TEAM_ID }}
-          CS_TEST_DC_ID: ${{ inputs.test_dc_id || '1' }}
+          CS_TEST_TEAM_ID: ${{ secrets.CS_TEST_TEAM_ID }}
+          CS_TEST_DC_ID: ${{ secrets.CS_TEST_DC_ID }}
         run: |
           echo "Running integration tests..."
           uv run pytest tests/integration -v --run-integration \
@@ -88,4 +77,4 @@ jobs:
         with:
           files: junit/integration-results.xml
           check_name: Integration Test Results
-          comment_mode: off
+          comment_mode: on

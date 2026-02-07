@@ -1,5 +1,3 @@
-"""EnvVar schema - separated to avoid circular imports."""
-
 from pydantic import BaseModel
 
 

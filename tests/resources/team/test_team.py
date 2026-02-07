@@ -1,15 +1,6 @@
-"""
-Tests for Team resources: TeamsResource and Team model.
-"""
-
 import pytest
 
 from codesphere.resources.team import Team, TeamCreate
-
-
-# -----------------------------------------------------------------------------
-# TeamsResource Tests
-# -----------------------------------------------------------------------------
 
 
 class TestTeamsResource:
@@ -58,11 +49,6 @@ class TestTeamsResource:
         mock_client.request.assert_awaited_once()
 
 
-# -----------------------------------------------------------------------------
-# Team Model Tests
-# -----------------------------------------------------------------------------
-
-
 class TestTeamModel:
     """Tests for the Team model and its methods."""
 
@@ -81,11 +67,6 @@ class TestTeamModel:
 
         with pytest.raises(RuntimeError, match="detached model"):
             _ = team.domains
-
-
-# -----------------------------------------------------------------------------
-# TeamCreate Schema Tests
-# -----------------------------------------------------------------------------
 
 
 class TestTeamCreateSchema:

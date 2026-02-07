@@ -1,18 +1,6 @@
-"""
-Shared fixtures for resource tests.
-
-This module provides fixtures specific to testing API resources,
-including pre-configured mock responses and resource instances.
-"""
-
 import pytest
 from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
-
-
-# -----------------------------------------------------------------------------
-# Resource Test Helpers
-# -----------------------------------------------------------------------------
 
 
 class ResourceTestHelper:
@@ -53,11 +41,6 @@ def resource_test_helper():
     return ResourceTestHelper
 
 
-# -----------------------------------------------------------------------------
-# Mock HTTP Client for Resources
-# -----------------------------------------------------------------------------
-
-
 @pytest.fixture
 def mock_http_client_for_resource(mock_response_factory):
     """
@@ -76,11 +59,6 @@ def mock_http_client_for_resource(mock_response_factory):
         return mock_client
 
     return _create
-
-
-# -----------------------------------------------------------------------------
-# Resource Instance Factories
-# -----------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -123,11 +101,6 @@ def metadata_resource_factory(mock_http_client_for_resource):
         return resource, mock_client
 
     return _create
-
-
-# -----------------------------------------------------------------------------
-# Model Instance Factories (for testing model methods)
-# -----------------------------------------------------------------------------
 
 
 @pytest.fixture

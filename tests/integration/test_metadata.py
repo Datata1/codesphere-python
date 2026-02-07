@@ -1,9 +1,3 @@
-"""
-Integration tests for Metadata resources.
-
-These tests are read-only and safe to run against any environment.
-"""
-
 import pytest
 
 from codesphere.resources.metadata import Datacenter, WsPlan, Image
@@ -23,7 +17,6 @@ class TestMetadataIntegration:
         assert len(datacenters) > 0
         assert all(isinstance(dc, Datacenter) for dc in datacenters)
 
-        # Verify datacenter has expected fields
         first_dc = datacenters[0]
         assert first_dc.id is not None
         assert first_dc.name is not None
@@ -38,7 +31,6 @@ class TestMetadataIntegration:
         assert len(plans) > 0
         assert all(isinstance(plan, WsPlan) for plan in plans)
 
-        # Verify plan has expected fields
         first_plan = plans[0]
         assert first_plan.id is not None
         assert first_plan.title is not None
@@ -54,7 +46,6 @@ class TestMetadataIntegration:
         assert len(images) > 0
         assert all(isinstance(img, Image) for img in images)
 
-        # Verify image has expected fields
         first_image = images[0]
         assert first_image.id is not None
         assert first_image.name is not None

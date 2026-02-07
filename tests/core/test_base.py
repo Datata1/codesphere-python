@@ -1,7 +1,3 @@
-"""
-Tests for core base classes: ResourceBase, CamelModel, ResourceList.
-"""
-
 import pytest
 from dataclasses import dataclass
 from unittest.mock import MagicMock
@@ -11,15 +7,8 @@ from pydantic import BaseModel
 from codesphere.core.base import CamelModel, ResourceBase, ResourceList
 
 
-# -----------------------------------------------------------------------------
-# Test Cases
-# -----------------------------------------------------------------------------
-
-
 @dataclass
 class CamelModelTestCase:
-    """Test case for CamelModel alias generation."""
-
     name: str
     field_name: str
     expected_alias: str
@@ -44,24 +33,14 @@ camel_model_test_cases = [
 ]
 
 
-# -----------------------------------------------------------------------------
-# CamelModel Tests
-# -----------------------------------------------------------------------------
-
-
 class TestCamelModel:
-    """Tests for the CamelModel base class."""
-
     def test_inherits_from_base_model(self):
-        """CamelModel should inherit from Pydantic BaseModel."""
         assert issubclass(CamelModel, BaseModel)
 
     def test_alias_generator_configured(self):
-        """CamelModel should have alias_generator configured."""
         assert CamelModel.model_config.get("alias_generator") is not None
 
     def test_populate_by_name_enabled(self):
-        """CamelModel should allow population by field name."""
         assert CamelModel.model_config.get("populate_by_name") is True
 
     @pytest.mark.parametrize(
@@ -70,25 +49,25 @@ class TestCamelModel:
     def test_camel_case_alias_generation(self, case: CamelModelTestCase):
         """Test that snake_case fields are aliased to camelCase."""
 
-        # Dynamically create a model with the test field
         class TestModel(CamelModel):
             pass
 
-        # Use model_fields to check alias generation
         TestModel.model_rebuild()
 
-        # Create a model class with the specific field
+        local_ns = {}
         exec(
-            f"""
-class DynamicModel(CamelModel):
+            f"""class DynamicModel(CamelModel):
     {case.field_name}: str = "test"
 """,
             {"CamelModel": CamelModel},
+            local_ns,
         )
 
-    def test_model_dump_by_alias(self):
-        """Test that model_dump with by_alias produces camelCase keys."""
+        DynamicModel = local_ns["DynamicModel"]
+        field_info = DynamicModel.model_fields[case.field_name]
+        assert field_info.alias == case.expected_alias
 
+    def test_model_dump_by_alias(self):
         class SampleModel(CamelModel):
             team_id: int
             data_center_id: int
@@ -102,8 +81,6 @@ class DynamicModel(CamelModel):
         assert dumped["dataCenterId"] == 2
 
     def test_model_validate_from_camel_case(self):
-        """Test that model can be created from camelCase input."""
-
         class SampleModel(CamelModel):
             team_id: int
             is_private: bool
@@ -114,8 +91,6 @@ class DynamicModel(CamelModel):
         assert model.is_private is True
 
     def test_model_validate_from_snake_case(self):
-        """Test that model can be created from snake_case input (populate_by_name)."""
-
         class SampleModel(CamelModel):
             team_id: int
             is_private: bool
@@ -126,14 +101,7 @@ class DynamicModel(CamelModel):
         assert model.is_private is False
 
 
-# -----------------------------------------------------------------------------
-# ResourceList Tests
-# -----------------------------------------------------------------------------
-
-
 class TestResourceList:
-    """Tests for the ResourceList generic container."""
-
     def test_create_with_list(self):
         """ResourceList should be created with a list of items."""
 
@@ -192,14 +160,7 @@ class TestResourceList:
         assert list(resource_list) == []
 
 
-# -----------------------------------------------------------------------------
-# ResourceBase Tests
-# -----------------------------------------------------------------------------
-
-
 class TestResourceBase:
-    """Tests for the ResourceBase class."""
-
     def test_initialization_with_http_client(self):
         """ResourceBase should store the HTTP client."""
         mock_client = MagicMock()

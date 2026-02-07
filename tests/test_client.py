@@ -1,7 +1,3 @@
-"""
-Tests for the main SDK client: CodesphereSDK and APIHttpClient.
-"""
-
 import pytest
 import httpx
 from dataclasses import dataclass
@@ -11,21 +7,11 @@ from unittest.mock import AsyncMock, patch
 from pydantic import BaseModel
 
 
-# -----------------------------------------------------------------------------
-# Test Models
-# -----------------------------------------------------------------------------
-
-
 class DummyModel(BaseModel):
     """A simple Pydantic model for testing."""
 
     name: str
     value: int
-
-
-# -----------------------------------------------------------------------------
-# Test Cases
-# -----------------------------------------------------------------------------
 
 
 @dataclass
@@ -79,11 +65,6 @@ request_test_cases = [
         expected_exception=httpx.HTTPStatusError,
     ),
 ]
-
-
-# -----------------------------------------------------------------------------
-# APIHttpClient Tests
-# -----------------------------------------------------------------------------
 
 
 class TestAPIHttpClient:
@@ -162,11 +143,6 @@ class TestAPIHttpClient:
                 assert response.status_code == case.mock_status_code
 
 
-# -----------------------------------------------------------------------------
-# CodesphereSDK Tests
-# -----------------------------------------------------------------------------
-
-
 class TestCodesphereSDK:
     """Tests for the CodesphereSDK class."""
 
@@ -197,7 +173,6 @@ class TestCodesphereSDK:
         with patch("httpx.AsyncClient", return_value=mock_async_client):
             async with sdk_client as sdk:
                 assert sdk is sdk_client
-                # HTTP client should be connected
                 assert sdk._http_client._client is not None
 
     @pytest.mark.asyncio

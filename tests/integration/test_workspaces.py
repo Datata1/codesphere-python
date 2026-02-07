@@ -1,10 +1,3 @@
-"""
-Integration tests for Workspace resources.
-
-These tests use session-scoped test workspaces that are created at the start
-of the test run and cleaned up afterwards.
-"""
-
 import pytest
 from typing import List
 
@@ -13,8 +6,8 @@ from codesphere.resources.workspace import (
     Workspace,
     WorkspaceUpdate,
     WorkspaceStatus,
+    CommandOutput,
 )
-from codesphere.resources.workspace.command_schemas import CommandOutput
 
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
@@ -36,7 +29,6 @@ class TestWorkspacesIntegration:
         assert len(workspaces) >= len(test_workspaces)
         assert all(isinstance(ws, Workspace) for ws in workspaces)
 
-        # Verify our test workspaces are in the list
         test_workspace_ids = {ws.id for ws in test_workspaces}
         listed_workspace_ids = {ws.id for ws in workspaces}
         assert test_workspace_ids.issubset(listed_workspace_ids)
@@ -61,7 +53,6 @@ class TestWorkspacesIntegration:
         """Workspace should have all expected fields populated."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Required fields
         assert workspace.id is not None
         assert workspace.team_id is not None
         assert workspace.name is not None
@@ -92,7 +83,6 @@ class TestWorkspacesIntegration:
         """Should execute a command in the workspace."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Execute a simple command
         result = await workspace.execute_command(command="echo 'Hello from SDK test'")
 
         assert isinstance(result, CommandOutput)
@@ -106,7 +96,6 @@ class TestWorkspacesIntegration:
         """Should execute a command with custom environment variables."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Execute command with environment variable
         result = await workspace.execute_command(
             command="echo $TEST_CMD_VAR",
             env={"TEST_CMD_VAR": "sdk_test_value"},
@@ -122,7 +111,6 @@ class TestWorkspacesIntegration:
         """Workspace model should provide access to env vars manager."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Accessing env_vars should not raise
         env_vars_manager = workspace.env_vars
         assert env_vars_manager is not None
 
@@ -136,23 +124,19 @@ class TestWorkspaceUpdateOperations:
         test_workspaces: List[Workspace],
     ):
         """Should update an existing workspace's name."""
-        # Use the second test workspace for update tests
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspaces[1].id)
         original_name = workspace.name
 
         try:
-            # Update workspace name
             new_name = f"{original_name}-updated"
             update_data = WorkspaceUpdate(name=new_name)
             await workspace.update(data=update_data)
 
             assert workspace.name == new_name
 
-            # Verify by fetching again
             refreshed = await sdk_client.workspaces.get(workspace_id=workspace.id)
             assert refreshed.name == new_name
         finally:
-            # Restore original name
             restore_data = WorkspaceUpdate(name=original_name)
             await workspace.update(data=restore_data)
 
@@ -166,13 +150,11 @@ class TestWorkspaceUpdateOperations:
         original_replicas = workspace.replicas
 
         try:
-            # Update replicas (within plan limits)
-            new_replicas = 1  # Safe value
+            new_replicas = 1
             update_data = WorkspaceUpdate(replicas=new_replicas)
             await workspace.update(data=update_data)
 
             assert workspace.replicas == new_replicas
         finally:
-            # Restore original
             restore_data = WorkspaceUpdate(replicas=original_replicas)
             await workspace.update(data=restore_data)

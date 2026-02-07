@@ -1,15 +1,11 @@
 from __future__ import annotations
 from functools import cached_property
 from pydantic import Field
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from .domain.manager import TeamDomainManager
 from ...core.base import CamelModel
 from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
-from ...http_client import APIHttpClient
-
-if TYPE_CHECKING:
-    pass
 
 
 class TeamCreate(CamelModel):
@@ -41,9 +37,5 @@ class Team(TeamBase, _APIOperationExecutor):
 
     @cached_property
     def domains(self) -> TeamDomainManager:
-        if self._http_client is None or not isinstance(
-            self._http_client, APIHttpClient
-        ):
-            raise RuntimeError("Cannot access 'domains' on a detached model.")
-
-        return TeamDomainManager(http_client=self._http_client, team_id=self.id)
+        http_client = self.validate_http_client()
+        return TeamDomainManager(http_client, team_id=self.id)

@@ -1,7 +1,3 @@
-"""
-Tests for Metadata resources: Datacenters, Plans, and Images.
-"""
-
 import pytest
 from dataclasses import dataclass
 from typing import List, Type
@@ -11,11 +7,6 @@ from codesphere.resources.metadata import (
     WsPlan,
     Image,
 )
-
-
-# -----------------------------------------------------------------------------
-# Test Cases
-# -----------------------------------------------------------------------------
 
 
 @dataclass
@@ -51,11 +42,11 @@ metadata_list_test_cases = [
                 "deprecated": False,
                 "characteristics": {
                     "id": 1,
-                    "cpu": 0.5,
-                    "gpu": 0,
-                    "ram": 512,
-                    "ssd": 1,
-                    "tempStorage": 0,
+                    "CPU": 0.5,
+                    "GPU": 0,
+                    "RAM": 512,
+                    "SSD": 1,
+                    "TempStorage": 0,
                     "onDemand": False,
                 },
                 "maxReplicas": 1,
@@ -80,11 +71,6 @@ metadata_list_test_cases = [
 ]
 
 
-# -----------------------------------------------------------------------------
-# MetadataResource Tests
-# -----------------------------------------------------------------------------
-
-
 class TestMetadataResource:
     """Tests for the MetadataResource class."""
 
@@ -100,11 +86,9 @@ class TestMetadataResource:
         """Test metadata list operations return correct model types."""
         resource, mock_client = metadata_resource_factory(case.mock_response)
 
-        # Call the operation method
         method = getattr(resource, case.operation)
         result = await method()
 
-        # Verify results
         assert len(result) == case.expected_count
         for item in result:
             assert isinstance(item, case.expected_type)
@@ -144,11 +128,11 @@ class TestMetadataResource:
                 "deprecated": False,
                 "characteristics": {
                     "id": 8,
-                    "cpu": 4.0,
-                    "gpu": 0,
-                    "ram": 8192,
-                    "ssd": 50,
-                    "tempStorage": 10,
+                    "CPU": 4.0,
+                    "GPU": 0,
+                    "RAM": 8192,
+                    "SSD": 50,
+                    "TempStorage": 10,
                     "onDemand": False,
                 },
                 "maxReplicas": 3,
@@ -163,11 +147,6 @@ class TestMetadataResource:
         assert plan.price_usd == 1500
         assert plan.characteristics.cpu == 4.0
         assert plan.characteristics.ram == 8192
-
-
-# -----------------------------------------------------------------------------
-# Schema Tests
-# -----------------------------------------------------------------------------
 
 
 class TestDatacenterSchema:
@@ -202,11 +181,11 @@ class TestWsPlanSchema:
             "deprecated": False,
             "characteristics": {
                 "id": 1,
-                "cpu": 0.5,
-                "gpu": 0,
-                "ram": 512,
-                "ssd": 1,
-                "tempStorage": 0,
+                "CPU": 0.5,
+                "GPU": 0,
+                "RAM": 512,
+                "SSD": 1,
+                "TempStorage": 0,
                 "onDemand": False,
             },
             "maxReplicas": 1,

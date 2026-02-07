@@ -1,9 +1,3 @@
-"""
-Integration tests for Workspace Environment Variables.
-
-These tests verify CRUD operations for environment variables on workspaces.
-"""
-
 import pytest
 
 from codesphere import CodesphereSDK
@@ -14,8 +8,6 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 
 class TestEnvVarsIntegration:
-    """Integration tests for workspace environment variables."""
-
     async def test_get_env_vars_empty(
         self,
         sdk_client: CodesphereSDK,
@@ -25,7 +17,6 @@ class TestEnvVarsIntegration:
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         env_vars = await workspace.env_vars.get()
 
-        # ResourceList is iterable and has length
         assert hasattr(env_vars, "__iter__")
         assert hasattr(env_vars, "__len__")
         assert len(env_vars) >= 0
@@ -38,7 +29,6 @@ class TestEnvVarsIntegration:
         """Should set environment variables on a workspace."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Set some test environment variables
         test_vars = [
             {"name": "TEST_VAR_1", "value": "test_value_1"},
             {"name": "TEST_VAR_2", "value": "test_value_2"},
@@ -47,7 +37,6 @@ class TestEnvVarsIntegration:
 
         await workspace.env_vars.set(test_vars)
 
-        # Verify they were set
         env_vars = await workspace.env_vars.get()
         env_var_names = [ev.name for ev in env_vars]
 
@@ -63,13 +52,10 @@ class TestEnvVarsIntegration:
         """Should update an existing environment variable's value."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Set initial value
         await workspace.env_vars.set([{"name": "UPDATE_TEST_VAR", "value": "initial"}])
 
-        # Update the value
         await workspace.env_vars.set([{"name": "UPDATE_TEST_VAR", "value": "updated"}])
 
-        # Verify the update
         env_vars = await workspace.env_vars.get()
         update_var = next((ev for ev in env_vars if ev.name == "UPDATE_TEST_VAR"), None)
 
@@ -84,17 +70,13 @@ class TestEnvVarsIntegration:
         """Should delete environment variables by name."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Ensure we have a variable to delete
         await workspace.env_vars.set([{"name": "TO_DELETE_VAR", "value": "delete_me"}])
 
-        # Verify it exists
         env_vars = await workspace.env_vars.get()
         assert any(ev.name == "TO_DELETE_VAR" for ev in env_vars)
 
-        # Delete by name
         await workspace.env_vars.delete(["TO_DELETE_VAR"])
 
-        # Verify deletion
         env_vars = await workspace.env_vars.get()
         assert not any(ev.name == "TO_DELETE_VAR" for ev in env_vars)
 
@@ -106,7 +88,6 @@ class TestEnvVarsIntegration:
         """Should delete multiple environment variables at once."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Set multiple variables
         await workspace.env_vars.set(
             [
                 {"name": "MULTI_DELETE_1", "value": "value1"},
@@ -115,12 +96,10 @@ class TestEnvVarsIntegration:
             ]
         )
 
-        # Delete multiple at once
         await workspace.env_vars.delete(
             ["MULTI_DELETE_1", "MULTI_DELETE_2", "MULTI_DELETE_3"]
         )
 
-        # Verify all deleted
         env_vars = await workspace.env_vars.get()
         remaining_names = [ev.name for ev in env_vars]
 
@@ -151,5 +130,4 @@ class TestEnvVarsIntegration:
         assert special_var is not None
         assert special_var.value == special_value
 
-        # Cleanup
         await workspace.env_vars.delete(["SPECIAL_CHARS_VAR"])

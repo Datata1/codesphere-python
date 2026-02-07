@@ -1,5 +1,11 @@
-from .schemas import Workspace, WorkspaceCreate, WorkspaceUpdate
-from .command_schemas import WorkspaceStatus
+from .schemas import (
+    Workspace,
+    WorkspaceCreate,
+    WorkspaceUpdate,
+    WorkspaceStatus,
+    CommandInput,
+    CommandOutput,
+)
 from .resources import WorkspacesResource
 
 __all__ = [
@@ -8,4 +14,6 @@ __all__ = [
     "WorkspaceUpdate",
     "WorkspaceStatus",
     "WorkspacesResource",
+    "CommandInput",
+    "CommandOutput",
 ]

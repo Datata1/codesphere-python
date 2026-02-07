@@ -1,14 +1,11 @@
 from __future__ import annotations
 from functools import cached_property
 import logging
-from pydantic import Field
 from typing import Dict, Optional, List
 
-from .command_schemas import CommandInput, CommandOutput, WorkspaceStatus
 from .envVars import EnvVar, WorkspaceEnvVarManager
 from ...core.base import CamelModel
-from ...core import _APIOperationExecutor, AsyncCallable
-from ...http_client import APIHttpClient
+from ...core import _APIOperationExecutor
 from ...utils import update_model_fields
 
 log = logging.getLogger(__name__)
@@ -58,42 +55,44 @@ class WorkspaceUpdate(CamelModel):
     restricted: Optional[bool] = None
 
 
-class Workspace(WorkspaceBase, _APIOperationExecutor):
-    update_op: AsyncCallable[None] = Field(
-        default=None,
-        exclude=True,
-    )
+class CommandInput(CamelModel):
+    """Input model for command execution."""
 
+    command: str
+    env: Optional[Dict[str, str]] = None
+
+
+class CommandOutput(CamelModel):
+    """Output model for command execution."""
+
+    command: str
+    working_dir: str
+    output: str
+    error: str
+
+
+class WorkspaceStatus(CamelModel):
+    """Status information for a workspace."""
+
+    is_running: bool
+
+
+class Workspace(WorkspaceBase, _APIOperationExecutor):
     async def update(self, data: WorkspaceUpdate) -> None:
         from .operations import _UPDATE_OP
 
         await self._execute_operation(_UPDATE_OP, data=data)
         update_model_fields(target=self, source=data)
 
-    delete_op: AsyncCallable[None] = Field(
-        default=None,
-        exclude=True,
-    )
-
     async def delete(self) -> None:
         from .operations import _DELETE_OP
 
         await self._execute_operation(_DELETE_OP)
 
-    get_status_op: AsyncCallable[WorkspaceStatus] = Field(
-        default=None,
-        exclude=True,
-    )
-
     async def get_status(self) -> WorkspaceStatus:
         from .operations import _GET_STATUS_OP
 
         return await self._execute_operation(_GET_STATUS_OP)
-
-    execute_command_op: AsyncCallable[CommandOutput] = Field(
-        default=None,
-        exclude=True,
-    )
 
     async def execute_command(
         self, command: str, env: Optional[Dict[str, str]] = None
@@ -105,10 +104,5 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
 
     @cached_property
     def env_vars(self) -> WorkspaceEnvVarManager:
-        if self._http_client is None or not isinstance(
-            self._http_client, APIHttpClient
-        ):
-            raise RuntimeError("Cannot access 'env_vars' on a detached model.")
-        return WorkspaceEnvVarManager(
-            http_client=self._http_client, workspace_id=self.id
-        )
+        http_client = self.validate_http_client()
+        return WorkspaceEnvVarManager(http_client, workspace_id=self.id)

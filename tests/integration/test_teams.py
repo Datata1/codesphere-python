@@ -1,10 +1,3 @@
-"""
-Integration tests for Team resources.
-
-These tests include read operations and some write operations.
-Write operations are marked separately so they can be skipped if needed.
-"""
-
 import pytest
 
 from codesphere import CodesphereSDK
@@ -25,7 +18,6 @@ class TestTeamsIntegration:
         assert len(teams) > 0
         assert all(isinstance(team, Team) for team in teams)
 
-        # Verify team has expected fields
         first_team = teams[0]
         assert first_team.id is not None
         assert first_team.name is not None
@@ -49,6 +41,5 @@ class TestTeamsIntegration:
         """Team model should provide access to domains manager."""
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        # Accessing domains should not raise
         domains_manager = team.domains
         assert domains_manager is not None

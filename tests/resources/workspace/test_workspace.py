@@ -1,7 +1,3 @@
-"""
-Tests for Workspace resources: WorkspacesResource and Workspace model.
-"""
-
 import pytest
 
 from codesphere.resources.workspace import (
@@ -10,11 +6,6 @@ from codesphere.resources.workspace import (
     WorkspaceUpdate,
     WorkspaceStatus,
 )
-
-
-# -----------------------------------------------------------------------------
-# WorkspacesResource Tests
-# -----------------------------------------------------------------------------
 
 
 class TestWorkspacesResource:
@@ -71,11 +62,6 @@ class TestWorkspacesResource:
 
         assert isinstance(result, Workspace)
         mock_client.request.assert_awaited_once()
-
-
-# -----------------------------------------------------------------------------
-# Workspace Model Tests
-# -----------------------------------------------------------------------------
 
 
 class TestWorkspaceModel:
@@ -139,11 +125,6 @@ class TestWorkspaceModel:
             _ = workspace.env_vars
 
 
-# -----------------------------------------------------------------------------
-# WorkspaceCreate Schema Tests
-# -----------------------------------------------------------------------------
-
-
 class TestWorkspaceCreateSchema:
     """Tests for the WorkspaceCreate schema."""
 
@@ -191,11 +172,6 @@ class TestWorkspaceCreateSchema:
         assert "isPrivateRepo" in dumped
 
 
-# -----------------------------------------------------------------------------
-# WorkspaceUpdate Schema Tests
-# -----------------------------------------------------------------------------
-
-
 class TestWorkspaceUpdateSchema:
     """Tests for the WorkspaceUpdate schema."""
 
@@ -222,11 +198,6 @@ class TestWorkspaceUpdateSchema:
         assert "name" in dumped
         assert "planId" in dumped
         assert "replicas" not in dumped
-
-
-# -----------------------------------------------------------------------------
-# WorkspaceStatus Schema Tests
-# -----------------------------------------------------------------------------
 
 
 class TestWorkspaceStatusSchema:

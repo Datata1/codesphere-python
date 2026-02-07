@@ -1,7 +1,3 @@
-"""
-Tests for core handler: _APIOperationExecutor and APIRequestHandler.
-"""
-
 import pytest
 from typing import Optional
 from unittest.mock import MagicMock
@@ -66,7 +62,9 @@ class TestAPIRequestHandler:
     @pytest.fixture
     def mock_executor(self):
         executor = ConcreteExecutor()
-        executor._http_client = MagicMock()
+        mock_client = MagicMock()
+        mock_client.request = MagicMock()
+        executor._http_client = mock_client
         return executor
 
     @pytest.fixture
@@ -125,11 +123,17 @@ class TestAPIRequestHandler:
             operation=sample_operation,
             kwargs={},
         )
-        with pytest.raises(RuntimeError, match="HTTP Client is not initialized"):
+        with pytest.raises(
+            RuntimeError, match="Cannot access resource on a detached model"
+        ):
             await handler.execute()
 
     @pytest.mark.asyncio
     async def test_inject_client_into_model(self, mock_executor, sample_operation):
+        mock_client = MagicMock()
+        mock_client.request = MagicMock()
+        mock_executor._http_client = mock_client
+
         handler = APIRequestHandler(
             executor=mock_executor,
             operation=sample_operation,
