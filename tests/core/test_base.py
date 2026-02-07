@@ -165,22 +165,8 @@ class TestCamelModelExport:
         model = SampleModel(team_id=1)
 
         with patch.dict(sys.modules, {"yaml": None}):
-            # Force reimport to trigger ImportError
             with pytest.raises(ImportError, match="PyYAML is required"):
-                # We need to actually make the import fail
-                import builtins
-
-                original_import = builtins.__import__
-
-                def mock_import(name, *args, **kwargs):
-                    if name == "yaml":
-                        raise ImportError("No module named 'yaml'")
-                    return original_import(name, *args, **kwargs)
-
-                with patch.object(builtins, "__import__", mock_import):
-                    model.to_yaml()
-
-
+                model.to_yaml()
 class TestResourceList:
     def test_create_with_list(self):
         """ResourceList should be created with a list of items."""
