@@ -9,6 +9,7 @@ from ...core import _APIOperationExecutor
 from ...core.base import CamelModel
 from ...utils import update_model_fields
 from .envVars import EnvVar, WorkspaceEnvVarManager
+from .git import WorkspaceGitManager
 from .landscape import WorkspaceLandscapeManager
 
 log = logging.getLogger(__name__)
@@ -137,3 +138,9 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
         """Manager for landscape operations (Multi Server Deployments)."""
         http_client = self.validate_http_client()
         return WorkspaceLandscapeManager(http_client, workspace_id=self.id)
+
+    @cached_property
+    def git(self) -> WorkspaceGitManager:
+        """Manager for git operations (head, pull)."""
+        http_client = self.validate_http_client()
+        return WorkspaceGitManager(http_client, workspace_id=self.id)
