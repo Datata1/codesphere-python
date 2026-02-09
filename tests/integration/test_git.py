@@ -8,9 +8,9 @@ from codesphere.resources.workspace import Workspace, WorkspaceCreate
 pytestmark = pytest.mark.integration
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 async def git_workspace(
-    module_sdk_client: CodesphereSDK,
+    session_sdk_client: CodesphereSDK,
     test_team_id: int,
     test_plan_id: int,
 ) -> AsyncGenerator[Workspace, None]:
@@ -21,7 +21,7 @@ async def git_workspace(
         git_url="https://github.com/octocat/Hello-World.git",
     )
 
-    workspace = await module_sdk_client.workspaces.create(payload=payload)
+    workspace = await session_sdk_client.workspaces.create(payload=payload)
 
     try:
         await workspace.wait_until_running(timeout=120.0)
