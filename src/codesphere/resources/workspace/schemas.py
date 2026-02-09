@@ -1,12 +1,15 @@
 from __future__ import annotations
-from functools import cached_property
-import logging
-from typing import Dict, Optional, List
 
-from .envVars import EnvVar, WorkspaceEnvVarManager
-from ...core.base import CamelModel
+import asyncio
+import logging
+from functools import cached_property
+from typing import Dict, List, Optional
+
 from ...core import _APIOperationExecutor
+from ...core.base import CamelModel
 from ...utils import update_model_fields
+from .envVars import EnvVar, WorkspaceEnvVarManager
+from .landscape import WorkspaceLandscapeManager
 
 log = logging.getLogger(__name__)
 
@@ -56,15 +59,11 @@ class WorkspaceUpdate(CamelModel):
 
 
 class CommandInput(CamelModel):
-    """Input model for command execution."""
-
     command: str
     env: Optional[Dict[str, str]] = None
 
 
 class CommandOutput(CamelModel):
-    """Output model for command execution."""
-
     command: str
     working_dir: str
     output: str
@@ -72,8 +71,6 @@ class CommandOutput(CamelModel):
 
 
 class WorkspaceStatus(CamelModel):
-    """Status information for a workspace."""
-
     is_running: bool
 
 
@@ -94,6 +91,34 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
 
         return await self._execute_operation(_GET_STATUS_OP)
 
+    async def wait_until_running(
+        self,
+        *,
+        timeout: float = 300.0,
+        poll_interval: float = 5.0,
+    ) -> None:
+        if poll_interval <= 0:
+            raise ValueError("poll_interval must be greater than 0")
+
+        elapsed = 0.0
+        while elapsed < timeout:
+            status = await self.get_status()
+            if status.is_running:
+                log.debug("Workspace %s is now running.", self.id)
+                return
+            log.debug(
+                "Workspace %s not running yet, waiting %ss... (elapsed: %.1fs)",
+                self.id,
+                poll_interval,
+                elapsed,
+            )
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+        raise TimeoutError(
+            f"Workspace {self.id} did not reach running state within {timeout} seconds."
+        )
+
     async def execute_command(
         self, command: str, env: Optional[Dict[str, str]] = None
     ) -> CommandOutput:
@@ -106,3 +131,9 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
     def env_vars(self) -> WorkspaceEnvVarManager:
         http_client = self.validate_http_client()
         return WorkspaceEnvVarManager(http_client, workspace_id=self.id)
+
+    @cached_property
+    def landscape(self) -> WorkspaceLandscapeManager:
+        """Manager for landscape operations (Multi Server Deployments)."""
+        http_client = self.validate_http_client()
+        return WorkspaceLandscapeManager(http_client, workspace_id=self.id)

@@ -1,0 +1,530 @@
+import asyncio
+
+import pytest
+
+from codesphere import CodesphereSDK
+from codesphere.core.base import ResourceList
+from codesphere.resources.workspace import Workspace
+from codesphere.resources.workspace.landscape import (
+    Profile,
+    ProfileBuilder,
+)
+
+pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+
+
+class TestLandscapeProfilesIntegration:
+    async def test_list_profiles_returns_resource_list(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        profiles = await workspace.landscape.list_profiles()
+
+        assert isinstance(profiles, ResourceList)
+
+    async def test_list_profiles_empty_workspace(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        profiles = await workspace.landscape.list_profiles()
+
+        assert isinstance(profiles, ResourceList)
+        assert len(profiles) >= 0
+
+    async def test_list_profiles_after_creating_profile_file(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        profile_name = "sdk-test-profile"
+        create_result = await workspace.execute_command(
+            f"echo 'version: 1' > ci.{profile_name}.yml"
+        )
+
+        try:
+            profiles = await workspace.landscape.list_profiles()
+
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names
+
+            matching_profile = next(p for p in profiles if p.name == profile_name)
+            assert isinstance(matching_profile, Profile)
+
+        finally:
+            await workspace.execute_command(f"rm -f ci.{profile_name}.yml")
+
+    async def test_list_profiles_with_multiple_profile_files(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        """list_profiles should find multiple profiles."""
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        profile_names = ["test-profile-1", "test-profile-2", "test_profile_3"]
+        for name in profile_names:
+            await workspace.execute_command(f"echo 'version: 1' > ci.{name}.yml")
+
+        try:
+            profiles = await workspace.landscape.list_profiles()
+
+            found_names = [p.name for p in profiles]
+            for expected_name in profile_names:
+                assert expected_name in found_names, (
+                    f"Profile {expected_name} not found"
+                )
+
+        finally:
+            for name in profile_names:
+                await workspace.execute_command(f"rm -f ci.{name}.yml")
+
+    async def test_list_profiles_ignores_non_profile_yml_files(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        await workspace.execute_command("echo 'version: 1' > ci.valid-profile.yml")
+        await workspace.execute_command("echo 'key: value' > config.yml")
+        await workspace.execute_command("echo 'services: []' > docker-compose.yml")
+
+        try:
+            profiles = await workspace.landscape.list_profiles()
+
+            profile_names = [p.name for p in profiles]
+            assert "valid-profile" in profile_names
+            assert "config" not in profile_names
+            assert "docker-compose" not in profile_names
+
+        finally:
+            await workspace.execute_command(
+                "rm -f ci.valid-profile.yml config.yml docker-compose.yml"
+            )
+
+    async def test_list_profiles_iterable(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        await workspace.execute_command("echo 'version: 1' > ci.iter-test.yml")
+
+        try:
+            profiles = await workspace.landscape.list_profiles()
+
+            profile_list = list(profiles)
+            assert isinstance(profile_list, list)
+
+            if len(profiles) > 0:
+                first_profile = profiles[0]
+                assert isinstance(first_profile, Profile)
+
+        finally:
+            await workspace.execute_command("rm -f ci.iter-test.yml")
+
+
+class TestLandscapeManagerAccess:
+    async def test_workspace_has_landscape_property(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        assert hasattr(workspace, "landscape")
+        assert workspace.landscape is not None
+
+    async def test_landscape_manager_is_cached(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        manager1 = workspace.landscape
+        manager2 = workspace.landscape
+
+        assert manager1 is manager2
+
+
+class TestSaveProfileIntegration:
+    async def test_save_profile_with_builder(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-builder-test"
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("echo 'Installing dependencies'")
+            .done()
+            .add_reactive_service("web")
+            .plan(test_plan_id)
+            .add_step("echo 'Starting server'")
+            .add_port(3000, public=True)
+            .replicas(1)
+            .done()
+            .build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+    async def test_save_profile_with_yaml_string(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-yaml-test"
+
+        yaml_content = """schemaVersion: v0.2
+prepare:
+  steps:
+    - command: echo 'test'
+test:
+  steps: []
+run: {}
+"""
+
+        try:
+            await workspace.landscape.save_profile(profile_name, yaml_content)
+
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+    async def test_save_profile_overwrites_existing(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-overwrite-test"
+
+        profile_v1 = (
+            ProfileBuilder().prepare().add_step("echo 'version 1'").done().build()
+        )
+
+        profile_v2 = (
+            ProfileBuilder().prepare().add_step("echo 'version 2'").done().build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile_v1)
+            await workspace.landscape.save_profile(profile_name, profile_v2)
+
+            content = await workspace.landscape.get_profile(profile_name)
+            assert "version 2" in content
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+
+class TestGetProfileIntegration:
+    async def test_get_profile_returns_yaml_content(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-get-test"
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("npm install")
+            .done()
+            .add_reactive_service("api")
+            .plan(test_plan_id)
+            .add_step("npm start")
+            .add_port(8080)
+            .env("NODE_ENV", "production")
+            .done()
+            .build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            content = await workspace.landscape.get_profile(profile_name)
+
+            assert "schemaVersion: v0.2" in content
+            assert "npm install" in content
+            assert "api:" in content
+            assert "NODE_ENV" in content
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+
+class TestDeleteProfileIntegration:
+    async def test_delete_profile_removes_file(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-delete-test"
+
+        profile = ProfileBuilder().build()
+        await workspace.landscape.save_profile(profile_name, profile)
+
+        profiles = await workspace.landscape.list_profiles()
+        assert profile_name in [p.name for p in profiles]
+
+        await workspace.landscape.delete_profile(profile_name)
+
+        profiles = await workspace.landscape.list_profiles()
+        assert profile_name not in [p.name for p in profiles]
+
+    async def test_delete_nonexistent_profile_no_error(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+
+        await workspace.landscape.delete_profile("nonexistent-profile-xyz")
+
+
+class TestProfileBuilderIntegration:
+    async def test_complex_profile_roundtrip(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-complex-test"
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("npm ci", name="Install")
+            .add_step("npm run build", name="Build")
+            .done()
+            .test()
+            .add_step("npm test")
+            .done()
+            .add_reactive_service("frontend")
+            .plan(test_plan_id)
+            .add_step("npm run serve")
+            .add_port(3000, public=True)
+            .add_path("/", port=3000)
+            .replicas(2)
+            .env("NODE_ENV", "production")
+            .health_endpoint("/health")
+            .done()
+            .add_reactive_service("backend")
+            .plan(test_plan_id)
+            .add_step("python -m uvicorn main:app")
+            .add_port(8000)
+            .add_path("/api", port=8000, strip_path=True)
+            .envs({"PYTHONPATH": "/app", "LOG_LEVEL": "info"})
+            .done()
+            .add_managed_service("database", provider="postgres", plan="small")
+            .config("max_connections", 50)
+            .done()
+            .build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            content = await workspace.landscape.get_profile(profile_name)
+
+            assert "schemaVersion: v0.2" in content
+            assert "frontend:" in content
+            assert "backend:" in content
+            assert "database:" in content
+            assert "npm ci" in content
+            assert "replicas: 2" in content
+            assert "postgres" in content
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+    async def test_profile_with_special_characters_in_env(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-special-chars-test"
+
+        profile = (
+            ProfileBuilder()
+            .add_reactive_service("app")
+            .plan(test_plan_id)
+            .add_step("npm start")
+            .add_port(3000)
+            .env("DATABASE_URL", "postgres://user:p@ss=word@localhost:5432/db")
+            .env("API_KEY", "sk-1234567890abcdef")
+            .done()
+            .build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            content = await workspace.landscape.get_profile(profile_name)
+            assert "DATABASE_URL" in content
+            assert "API_KEY" in content
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+
+class TestLandscapeDeploymentWorkflow:
+    async def test_full_landscape_workflow_deploy_teardown_delete(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-workflow-test"
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("echo 'Preparing...'", name="Prepare")
+            .done()
+            .add_reactive_service("web")
+            .plan(test_plan_id)
+            .add_step("echo 'Starting web service' && sleep infinity")
+            .add_port(3000, public=True)
+            .add_path("/", port=3000)
+            .replicas(1)
+            .env("NODE_ENV", "production")
+            .done()
+            .build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names, "Profile should exist after saving"
+
+            content = await workspace.landscape.get_profile(profile_name)
+            assert "schemaVersion: v0.2" in content
+            assert "web:" in content
+            assert f"plan: {test_plan_id}" in content
+
+            await workspace.landscape.deploy(profile=profile_name)
+
+            await workspace.landscape.teardown()
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name not in profile_names, (
+                "Profile should not exist after deletion"
+            )
+
+    async def test_deploy_and_teardown_only(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-deploy-teardown-test"
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("echo 'Setup complete'")
+            .done()
+            .add_reactive_service("api")
+            .plan(test_plan_id)
+            .add_step("echo 'API running' && sleep infinity")
+            .add_port(8080)
+            .add_path("/api", port=8080)
+            .replicas(1)
+            .done()
+            .build()
+        )
+
+        try:
+            await workspace.landscape.save_profile(profile_name, profile)
+
+            # got mutex errors when deploy and teardown were called in quick succession,
+            # adding delay to mitigate
+            # maybe report a bug if this continues to be an issue
+            await asyncio.sleep(2)
+
+            await workspace.landscape.deploy(profile=profile_name)
+
+            await workspace.landscape.teardown()
+
+            profiles = await workspace.landscape.list_profiles()
+            profile_names = [p.name for p in profiles]
+            assert profile_name in profile_names, (
+                "Profile should still exist after teardown"
+            )
+
+        finally:
+            await workspace.landscape.delete_profile(profile_name)
+
+    async def test_profile_deletion_removes_from_list(
+        self,
+        sdk_client: CodesphereSDK,
+        test_workspace: Workspace,
+        test_plan_id: int,
+    ):
+        workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
+        profile_name = "sdk-deletion-verify-test"
+
+        profile = (
+            ProfileBuilder()
+            .add_reactive_service("service")
+            .plan(test_plan_id)
+            .add_step("echo 'running'")
+            .add_port(3000)
+            .done()
+            .build()
+        )
+
+        await workspace.landscape.save_profile(profile_name, profile)
+
+        profiles_before = await workspace.landscape.list_profiles()
+        assert profile_name in [p.name for p in profiles_before]
+
+        await workspace.landscape.delete_profile(profile_name)
+
+        profiles_after = await workspace.landscape.list_profiles()
+        assert profile_name not in [p.name for p in profiles_after], (
+            f"Profile '{profile_name}' should be removed after deletion"
+        )
