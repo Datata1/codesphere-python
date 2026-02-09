@@ -1,12 +1,13 @@
+from .git import GitHead, WorkspaceGitManager
+from .resources import WorkspacesResource
 from .schemas import (
-    Workspace,
-    WorkspaceCreate,
-    WorkspaceUpdate,
-    WorkspaceStatus,
     CommandInput,
     CommandOutput,
+    Workspace,
+    WorkspaceCreate,
+    WorkspaceStatus,
+    WorkspaceUpdate,
 )
-from .resources import WorkspacesResource
 
 __all__ = [
     "Workspace",
@@ -16,4 +17,6 @@ __all__ = [
     "WorkspacesResource",
     "CommandInput",
     "CommandOutput",
+    "WorkspaceGitManager",
+    "GitHead",
 ]

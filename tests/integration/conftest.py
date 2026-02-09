@@ -16,7 +16,6 @@ log = logging.getLogger(__name__)
 
 
 def pytest_addoption(parser):
-    """Add custom command line options for integration tests."""
     parser.addoption(
         "--run-integration",
         action="store_true",
@@ -26,14 +25,12 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    """Register custom markers."""
     config.addinivalue_line(
         "markers", "integration: mark test as integration test (requires API token)"
     )
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip integration tests unless --run-integration is passed."""
     if config.getoption("--run-integration"):
         return
 
@@ -121,19 +118,27 @@ async def test_workspaces(
 ) -> AsyncGenerator[List[Workspace], None]:
     created_workspaces: List[Workspace] = []
 
-    for i in range(2):
-        workspace_name = f"{TEST_WORKSPACE_PREFIX}-{i + 1}"
+    workspace_configs = [
+        {"name": f"{TEST_WORKSPACE_PREFIX}-1", "git_url": None},
+        {
+            "name": f"{TEST_WORKSPACE_PREFIX}-git",
+            "git_url": "https://github.com/octocat/Hello-World.git",
+        },
+    ]
+
+    for config in workspace_configs:
         payload = WorkspaceCreate(
             team_id=test_team_id,
-            name=workspace_name,
+            name=config["name"],
             plan_id=test_plan_id,
+            git_url=config["git_url"],
         )
         try:
             workspace = await session_sdk_client.workspaces.create(payload=payload)
             created_workspaces.append(workspace)
             log.info(f"Created test workspace: {workspace.name} (ID: {workspace.id})")
         except Exception as e:
-            log.error(f"Failed to create test workspace {workspace_name}: {e}")
+            log.error(f"Failed to create test workspace {config['name']}: {e}")
             for ws in created_workspaces:
                 try:
                     await ws.delete()
@@ -155,3 +160,17 @@ async def test_workspaces(
 @pytest.fixture(scope="session")
 async def test_workspace(test_workspaces: List[Workspace]) -> Workspace:
     return test_workspaces[0]
+
+
+@pytest.fixture(scope="session")
+def git_workspace_id(test_workspaces: List[Workspace]) -> int:
+    return test_workspaces[1].id
+
+
+@pytest.fixture
+async def workspace_with_git(
+    sdk_client: CodesphereSDK, git_workspace_id: int
+) -> Workspace:
+    workspace = await sdk_client.workspaces.get(workspace_id=git_workspace_id)
+    await workspace.wait_until_running(timeout=120.0)
+    return workspace
