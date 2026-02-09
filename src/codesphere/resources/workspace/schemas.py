@@ -59,15 +59,11 @@ class WorkspaceUpdate(CamelModel):
 
 
 class CommandInput(CamelModel):
-    """Input model for command execution."""
-
     command: str
     env: Optional[Dict[str, str]] = None
 
 
 class CommandOutput(CamelModel):
-    """Output model for command execution."""
-
     command: str
     working_dir: str
     output: str
@@ -75,8 +71,6 @@ class CommandOutput(CamelModel):
 
 
 class WorkspaceStatus(CamelModel):
-    """Status information for a workspace."""
-
     is_running: bool
 
 
@@ -103,25 +97,20 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
         timeout: float = 300.0,
         poll_interval: float = 5.0,
     ) -> None:
-        """Wait until the workspace is in a running state.
+        if poll_interval <= 0:
+            raise ValueError("poll_interval must be greater than 0")
 
-        Args:
-            timeout: Maximum time to wait in seconds (default: 300s / 5 minutes).
-            poll_interval: Time between status checks in seconds (default: 5s).
-
-        Raises:
-            TimeoutError: If the workspace is not running within the timeout period.
-        """
         elapsed = 0.0
         while elapsed < timeout:
             status = await self.get_status()
             if status.is_running:
-                log.debug(f"Workspace {self.id} is now running.")
+                log.debug("Workspace %s is now running.", self.id)
                 return
-
             log.debug(
-                f"Workspace {self.id} not running yet, "
-                f"waiting {poll_interval}s... (elapsed: {elapsed:.1f}s)"
+                "Workspace %s not running yet, waiting %ss... (elapsed: %.1fs)",
+                self.id,
+                poll_interval,
+                elapsed,
             )
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval

@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from codesphere import CodesphereSDK
@@ -12,14 +14,11 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 
 class TestLandscapeProfilesIntegration:
-    """Integration tests for landscape profile listing."""
-
     async def test_list_profiles_returns_resource_list(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """list_profiles should return a ResourceList."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
         profiles = await workspace.landscape.list_profiles()
@@ -31,12 +30,10 @@ class TestLandscapeProfilesIntegration:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """list_profiles on a fresh workspace should return empty or existing profiles."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
         profiles = await workspace.landscape.list_profiles()
 
-        # Fresh workspace may have no profiles, which is valid
         assert isinstance(profiles, ResourceList)
         assert len(profiles) >= 0
 
@@ -45,10 +42,8 @@ class TestLandscapeProfilesIntegration:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """list_profiles should find a profile after creating a ci.<name>.yml file."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Create a test profile file
         profile_name = "sdk-test-profile"
         create_result = await workspace.execute_command(
             f"echo 'version: 1' > ci.{profile_name}.yml"
@@ -60,12 +55,10 @@ class TestLandscapeProfilesIntegration:
             profile_names = [p.name for p in profiles]
             assert profile_name in profile_names
 
-            # Verify the profile is a Profile instance
             matching_profile = next(p for p in profiles if p.name == profile_name)
             assert isinstance(matching_profile, Profile)
 
         finally:
-            # Cleanup: remove the test profile file
             await workspace.execute_command(f"rm -f ci.{profile_name}.yml")
 
     async def test_list_profiles_with_multiple_profile_files(
@@ -76,7 +69,6 @@ class TestLandscapeProfilesIntegration:
         """list_profiles should find multiple profiles."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Create multiple test profile files
         profile_names = ["test-profile-1", "test-profile-2", "test_profile_3"]
         for name in profile_names:
             await workspace.execute_command(f"echo 'version: 1' > ci.{name}.yml")
@@ -91,7 +83,6 @@ class TestLandscapeProfilesIntegration:
                 )
 
         finally:
-            # Cleanup: remove all test profile files
             for name in profile_names:
                 await workspace.execute_command(f"rm -f ci.{name}.yml")
 
@@ -100,10 +91,8 @@ class TestLandscapeProfilesIntegration:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """list_profiles should not include non-profile yml files."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Create a profile file and a non-profile yml file
         await workspace.execute_command("echo 'version: 1' > ci.valid-profile.yml")
         await workspace.execute_command("echo 'key: value' > config.yml")
         await workspace.execute_command("echo 'services: []' > docker-compose.yml")
@@ -113,12 +102,10 @@ class TestLandscapeProfilesIntegration:
 
             profile_names = [p.name for p in profiles]
             assert "valid-profile" in profile_names
-            # These should NOT be in the list as they don't match ci.<name>.yml pattern
             assert "config" not in profile_names
             assert "docker-compose" not in profile_names
 
         finally:
-            # Cleanup
             await workspace.execute_command(
                 "rm -f ci.valid-profile.yml config.yml docker-compose.yml"
             )
@@ -128,20 +115,16 @@ class TestLandscapeProfilesIntegration:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """list_profiles result should be iterable."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
-        # Create a test profile
         await workspace.execute_command("echo 'version: 1' > ci.iter-test.yml")
 
         try:
             profiles = await workspace.landscape.list_profiles()
 
-            # Test iteration
             profile_list = list(profiles)
             assert isinstance(profile_list, list)
 
-            # Test indexing
             if len(profiles) > 0:
                 first_profile = profiles[0]
                 assert isinstance(first_profile, Profile)
@@ -151,14 +134,11 @@ class TestLandscapeProfilesIntegration:
 
 
 class TestLandscapeManagerAccess:
-    """Integration tests for accessing the landscape manager."""
-
     async def test_workspace_has_landscape_property(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """Workspace should have a landscape property."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
         assert hasattr(workspace, "landscape")
@@ -169,7 +149,6 @@ class TestLandscapeManagerAccess:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """Landscape manager should be cached on the workspace instance."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
         manager1 = workspace.landscape
@@ -179,15 +158,12 @@ class TestLandscapeManagerAccess:
 
 
 class TestSaveProfileIntegration:
-    """Integration tests for saving landscape profiles."""
-
     async def test_save_profile_with_builder(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """save_profile should create a profile file using ProfileBuilder."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-builder-test"
 
@@ -220,7 +196,6 @@ class TestSaveProfileIntegration:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """save_profile should accept a raw YAML string."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-yaml-test"
 
@@ -248,7 +223,6 @@ run: {}
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """save_profile should overwrite an existing profile."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-overwrite-test"
 
@@ -272,15 +246,12 @@ run: {}
 
 
 class TestGetProfileIntegration:
-    """Integration tests for getting landscape profile content."""
-
     async def test_get_profile_returns_yaml_content(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """get_profile should return the YAML content of a saved profile."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-get-test"
 
@@ -313,14 +284,11 @@ class TestGetProfileIntegration:
 
 
 class TestDeleteProfileIntegration:
-    """Integration tests for deleting landscape profiles."""
-
     async def test_delete_profile_removes_file(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """delete_profile should remove the profile file."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-delete-test"
 
@@ -340,22 +308,18 @@ class TestDeleteProfileIntegration:
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
     ):
-        """delete_profile should not raise an error for non-existent profiles."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
         await workspace.landscape.delete_profile("nonexistent-profile-xyz")
 
 
 class TestProfileBuilderIntegration:
-    """Integration tests for ProfileBuilder with real workspaces."""
-
     async def test_complex_profile_roundtrip(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """A complex profile should survive save and retrieve."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-complex-test"
 
@@ -412,7 +376,6 @@ class TestProfileBuilderIntegration:
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """Profile with special characters in env values should work."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-special-chars-test"
 
@@ -440,15 +403,12 @@ class TestProfileBuilderIntegration:
 
 
 class TestLandscapeDeploymentWorkflow:
-    """Integration tests for the complete landscape deployment workflow."""
-
     async def test_full_landscape_workflow_deploy_teardown_delete(
         self,
         sdk_client: CodesphereSDK,
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """Test the complete workflow: create profile, deploy, teardown, delete profile."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-workflow-test"
 
@@ -499,7 +459,6 @@ class TestLandscapeDeploymentWorkflow:
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """Test deploy and teardown without profile deletion."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-deploy-teardown-test"
 
@@ -521,6 +480,11 @@ class TestLandscapeDeploymentWorkflow:
         try:
             await workspace.landscape.save_profile(profile_name, profile)
 
+            # got mutex errors when deploy and teardown were called in quick succession,
+            # adding delay to mitigate
+            # maybe report a bug if this continues to be an issue
+            await asyncio.sleep(2)
+
             await workspace.landscape.deploy(profile=profile_name)
 
             await workspace.landscape.teardown()
@@ -540,7 +504,6 @@ class TestLandscapeDeploymentWorkflow:
         test_workspace: Workspace,
         test_plan_id: int,
     ):
-        """Verify that deleting a profile removes it from the profile list."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
         profile_name = "sdk-deletion-verify-test"
 
