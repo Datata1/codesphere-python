@@ -16,7 +16,7 @@ async def git_workspace(
 ) -> AsyncGenerator[Workspace, None]:
     payload = WorkspaceCreate(
         team_id=test_team_id,
-        name="sdk-git-integration-test",
+        name="sdk-git-integration-test-git",
         plan_id=test_plan_id,
         git_url="https://github.com/octocat/Hello-World.git",
     )
