@@ -11,6 +11,7 @@ from ...utils import update_model_fields
 from .envVars import EnvVar, WorkspaceEnvVarManager
 from .git import WorkspaceGitManager
 from .landscape import WorkspaceLandscapeManager
+from .logs import WorkspaceLogManager
 
 log = logging.getLogger(__name__)
 
@@ -144,3 +145,23 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
         """Manager for git operations (head, pull)."""
         http_client = self.validate_http_client()
         return WorkspaceGitManager(http_client, workspace_id=self.id)
+
+    @cached_property
+    def logs(self) -> WorkspaceLogManager:
+        """Manager for streaming workspace logs.
+
+        Provides methods to stream or collect logs from pipeline stages
+        (prepare, test, run) and Multi Server Deployment servers/replicas.
+
+        Example:
+            ```python
+            # Stream logs as they arrive
+            async for entry in workspace.logs.stream(stage="prepare", step=1):
+                print(entry.message)
+
+            # Collect all logs at once
+            entries = await workspace.logs.collect(stage="test", step=1)
+            ```
+        """
+        http_client = self.validate_http_client()
+        return WorkspaceLogManager(http_client, workspace_id=self.id)

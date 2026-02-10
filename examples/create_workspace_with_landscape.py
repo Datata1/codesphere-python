@@ -3,59 +3,92 @@ import time
 
 from codesphere import CodesphereSDK
 from codesphere.resources.workspace import WorkspaceCreate
-from codesphere.resources.workspace.landscape import ProfileBuilder, ProfileConfig
+from codesphere.resources.workspace.landscape import (
+    PipelineStage,
+    PipelineState,
+    ProfileBuilder,
+)
+from codesphere.resources.workspace.logs import LogStage
 
-TEAM_ID = 123  # Replace with your actual team ID
-
-
-async def get_plan_id(sdk: CodesphereSDK, plan_name: str = "Micro") -> int:
-    plans = await sdk.metadata.list_plans()
-    plan = next((p for p in plans if p.title == plan_name and not p.deprecated), None)
-    if not plan:
-        raise ValueError(f"Plan '{plan_name}' not found")
-    return plan.id
-
-
-def build_web_profile(plan_id: int) -> ProfileConfig:
-    """Build a simple web service landscape profile."""
-    return (
-        ProfileBuilder()
-        .prepare()
-        .add_step("npm install", name="Install dependencies")
-        .done()
-        .add_reactive_service("web")
-        .plan(plan_id)
-        .add_step("npm start")
-        .add_port(3000, public=True)
-        .add_path("/", port=3000)
-        .replicas(1)
-        .env("NODE_ENV", "production")
-        .build()
-    )
-
-
-async def create_workspace(sdk: CodesphereSDK, plan_id: int, name: str):
-    workspace = await sdk.workspaces.create(
-        WorkspaceCreate(plan_id=plan_id, team_id=TEAM_ID, name=name)
-    )
-    await workspace.wait_until_running(timeout=300.0, poll_interval=5.0)
-    return workspace
-
-
-async def deploy_landscape(workspace, profile: dict, profile_name: str = "production"):
-    await workspace.landscape.save_profile(profile_name, profile)
-    await workspace.landscape.deploy(profile=profile_name)
-    print("Deployment started!")
+TEAM_ID = 123
 
 
 async def main():
     async with CodesphereSDK() as sdk:
-        plan_id = await get_plan_id(sdk)
-        workspace = await create_workspace(
-            sdk, plan_id, f"landscape-demo-{int(time.time())}"
+        plans = await sdk.metadata.list_plans()
+        plan = next((p for p in plans if p.title == "Micro" and not p.deprecated), None)
+        if not plan:
+            raise ValueError("Micro plan not found")
+
+        workspace_name = f"pipeline-demo-{int(time.time())}"
+
+        print(f"Creating workspace '{workspace_name}'...")
+        workspace = await sdk.workspaces.create(
+            WorkspaceCreate(plan_id=plan.id, team_id=TEAM_ID, name=workspace_name)
         )
-        profile = build_web_profile(plan_id)
-        await deploy_landscape(workspace, profile)
+        print(f"✓ Workspace created (ID: {workspace.id})")
+
+        print("Waiting for workspace to start...")
+        await workspace.wait_until_running(timeout=300.0, poll_interval=5.0)
+        print("✓ Workspace is running\n")
+
+        profile = (
+            ProfileBuilder()
+            .prepare()
+            .add_step("echo 'Installing dependencies...' && sleep 2")
+            .add_step("echo 'Setup complete!' && sleep 1")
+            .done()
+            .add_reactive_service("web")
+            .plan(plan.id)
+            .add_step(
+                'for i in $(seq 1 20); do echo "[$i] Processing request..."; sleep 1; done'
+            )
+            .add_port(3000, public=True)
+            .add_path("/", port=3000)
+            .replicas(1)
+            .done()
+            .build()
+        )
+
+        print("Deploying landscape profile...")
+        await workspace.landscape.save_profile("production", profile)
+        await workspace.landscape.deploy(profile="production")
+        print("✓ Profile deployed\n")
+
+        print("--- Prepare Stage ---")
+        await workspace.landscape.start_stage(
+            PipelineStage.PREPARE, profile="production"
+        )
+        prepare_status = await workspace.landscape.wait_for_stage(
+            PipelineStage.PREPARE, timeout=60.0
+        )
+
+        for status in prepare_status:
+            icon = "✓" if status.state == PipelineState.SUCCESS else "✗"
+            print(f"{icon} {status.server}: {status.state.value}")
+
+        print("\nPrepare logs:")
+        for step in range(len(prepare_status[0].steps)):
+            logs = await workspace.logs.collect(
+                stage=LogStage.PREPARE, step=step, timeout=5.0
+            )
+            for entry in logs:
+                if entry.get_text():
+                    print(f"  {entry.get_text().strip()}")
+
+        print("\n--- Run Stage ---")
+        await workspace.landscape.start_stage(PipelineStage.RUN, profile="production")
+        print("Started run stage\n")
+
+        print("Streaming logs from 'web' service (using context manager):")
+        count = 0
+        async with workspace.logs.open_server_stream(step=0, server="web") as stream:
+            async for entry in stream:
+                if entry.get_text():
+                    print(f"  {entry.get_text().strip()}")
+                    count += 1
+
+        print(f"\n✓ Stream ended ({count} log entries)")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
@@ -10,10 +11,20 @@ from ....http_client import APIHttpClient
 from .operations import (
     _DEPLOY_OP,
     _DEPLOY_WITH_PROFILE_OP,
+    _GET_PIPELINE_STATUS_OP,
     _SCALE_OP,
+    _START_PIPELINE_STAGE_OP,
+    _START_PIPELINE_STAGE_WITH_PROFILE_OP,
+    _STOP_PIPELINE_STAGE_OP,
     _TEARDOWN_OP,
 )
-from .schemas import Profile, ProfileConfig
+from .schemas import (
+    PipelineStage,
+    PipelineState,
+    PipelineStatusList,
+    Profile,
+    ProfileConfig,
+)
 
 if TYPE_CHECKING:
     from ..schemas import CommandOutput
@@ -95,3 +106,94 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
 
     async def scale(self, services: Dict[str, int]) -> None:
         await self._execute_operation(_SCALE_OP, data=services)
+
+    async def start_stage(
+        self,
+        stage: Union[PipelineStage, str],
+        profile: Optional[str] = None,
+    ) -> None:
+        if isinstance(stage, PipelineStage):
+            stage = stage.value
+
+        if profile is not None:
+            _validate_profile_name(profile)
+            await self._execute_operation(
+                _START_PIPELINE_STAGE_WITH_PROFILE_OP, stage=stage, profile=profile
+            )
+        else:
+            await self._execute_operation(_START_PIPELINE_STAGE_OP, stage=stage)
+
+    async def stop_stage(self, stage: Union[PipelineStage, str]) -> None:
+        if isinstance(stage, PipelineStage):
+            stage = stage.value
+
+        await self._execute_operation(_STOP_PIPELINE_STAGE_OP, stage=stage)
+
+    async def get_stage_status(
+        self, stage: Union[PipelineStage, str]
+    ) -> PipelineStatusList:
+        if isinstance(stage, PipelineStage):
+            stage = stage.value
+
+        return await self._execute_operation(_GET_PIPELINE_STATUS_OP, stage=stage)
+
+    async def wait_for_stage(
+        self,
+        stage: Union[PipelineStage, str],
+        *,
+        timeout: float = 300.0,
+        poll_interval: float = 5.0,
+        server: Optional[str] = None,
+    ) -> PipelineStatusList:
+        if poll_interval <= 0:
+            raise ValueError("poll_interval must be greater than 0")
+
+        stage_name = stage.value if isinstance(stage, PipelineStage) else stage
+        elapsed = 0.0
+
+        while elapsed < timeout:
+            status_list = await self.get_stage_status(stage)
+
+            relevant_statuses = []
+            for s in status_list:
+                if server is not None:
+                    if s.server == server:
+                        relevant_statuses.append(s)
+                else:
+                    if s.steps:
+                        relevant_statuses.append(s)
+                    elif s.state != PipelineState.WAITING:
+                        relevant_statuses.append(s)
+
+            if not relevant_statuses:
+                log.debug(
+                    "Pipeline stage '%s': no servers with steps yet, waiting...",
+                    stage_name,
+                )
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+                continue
+
+            all_completed = all(
+                s.state
+                in (PipelineState.SUCCESS, PipelineState.FAILURE, PipelineState.ABORTED)
+                for s in relevant_statuses
+            )
+
+            if all_completed:
+                log.debug("Pipeline stage '%s' completed.", stage_name)
+                return PipelineStatusList(root=relevant_statuses)
+
+            states = [f"{s.server}={s.state.value}" for s in relevant_statuses]
+            log.debug(
+                "Pipeline stage '%s' status: %s (elapsed: %.1fs)",
+                stage_name,
+                ", ".join(states),
+                elapsed,
+            )
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+        raise TimeoutError(
+            f"Pipeline stage '{stage_name}' did not complete within {timeout} seconds."
+        )

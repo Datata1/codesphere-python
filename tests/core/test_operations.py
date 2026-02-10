@@ -1,10 +1,11 @@
-import pytest
 from dataclasses import dataclass
 from typing import Optional, Type
 
+import pytest
 from pydantic import BaseModel
 
-from codesphere.core.operations import APIOperation
+from codesphere.core.operations import APIOperation, StreamOperation
+from codesphere.resources.workspace.logs import LogEntry
 
 
 class SampleInputModel(BaseModel):
@@ -121,3 +122,46 @@ class TestAPIOperation:
         )
 
         assert operation.input_model is None
+
+    def test_create_api_operation(self):
+        op = APIOperation(
+            method="GET",
+            endpoint_template="/test/{id}",
+            response_model=LogEntry,
+        )
+        assert op.method == "GET"
+        assert op.endpoint_template == "/test/{id}"
+        assert op.response_model == LogEntry
+
+    def test_api_operation_is_frozen(self):
+        op = APIOperation(
+            method="GET",
+            endpoint_template="/test",
+            response_model=LogEntry,
+        )
+        try:
+            op.method = "POST"
+            assert False, "Should raise error"
+        except Exception:
+            pass
+
+
+class TestStreamOperation:
+    def test_create_stream_operation(self):
+        op = StreamOperation(
+            endpoint_template="/logs/{id}",
+            entry_model=LogEntry,
+        )
+        assert op.endpoint_template == "/logs/{id}"
+        assert op.entry_model == LogEntry
+
+    def test_stream_operation_is_frozen(self):
+        op = StreamOperation(
+            endpoint_template="/logs/{id}",
+            entry_model=LogEntry,
+        )
+        try:
+            op.endpoint_template = "/other"
+            assert False, "Should raise error"
+        except Exception:
+            pass

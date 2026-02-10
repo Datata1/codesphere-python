@@ -4,6 +4,10 @@ from .schemas import (
     ManagedServiceConfig,
     NetworkConfig,
     PathConfig,
+    PipelineStage,
+    PipelineState,
+    PipelineStatus,
+    PipelineStatusList,
     PortConfig,
     Profile,
     ProfileBuilder,
@@ -12,6 +16,7 @@ from .schemas import (
     ReactiveServiceConfig,
     StageConfig,
     Step,
+    StepStatus,
 )
 
 __all__ = [
@@ -28,4 +33,9 @@ __all__ = [
     "NetworkConfig",
     "PortConfig",
     "PathConfig",
+    "PipelineStage",
+    "PipelineState",
+    "PipelineStatus",
+    "PipelineStatusList",
+    "StepStatus",
 ]
