@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
@@ -10,10 +11,20 @@ from ....http_client import APIHttpClient
 from .operations import (
     _DEPLOY_OP,
     _DEPLOY_WITH_PROFILE_OP,
+    _GET_PIPELINE_STATUS_OP,
     _SCALE_OP,
+    _START_PIPELINE_STAGE_OP,
+    _START_PIPELINE_STAGE_WITH_PROFILE_OP,
+    _STOP_PIPELINE_STAGE_OP,
     _TEARDOWN_OP,
 )
-from .schemas import Profile, ProfileConfig
+from .schemas import (
+    PipelineStage,
+    PipelineState,
+    PipelineStatusList,
+    Profile,
+    ProfileConfig,
+)
 
 if TYPE_CHECKING:
     from ..schemas import CommandOutput
@@ -95,3 +106,155 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
 
     async def scale(self, services: Dict[str, int]) -> None:
         await self._execute_operation(_SCALE_OP, data=services)
+
+    # Pipeline operations
+
+    async def start_stage(
+        self,
+        stage: Union[PipelineStage, str],
+        profile: Optional[str] = None,
+    ) -> None:
+        """Start a pipeline stage.
+
+        Args:
+            stage: The pipeline stage to start ('prepare', 'test', or 'run').
+            profile: Optional profile name. If provided, starts the stage with
+                     that profile. Required for first run after deploy.
+
+        Raises:
+            ValidationError: If the workspace is not running or parameters are invalid.
+            NotFoundError: If the workspace is not found.
+        """
+        if isinstance(stage, PipelineStage):
+            stage = stage.value
+
+        if profile is not None:
+            _validate_profile_name(profile)
+            await self._execute_operation(
+                _START_PIPELINE_STAGE_WITH_PROFILE_OP, stage=stage, profile=profile
+            )
+        else:
+            await self._execute_operation(_START_PIPELINE_STAGE_OP, stage=stage)
+
+    async def stop_stage(self, stage: Union[PipelineStage, str]) -> None:
+        """Stop a pipeline stage.
+
+        Args:
+            stage: The pipeline stage to stop ('prepare', 'test', or 'run').
+
+        Raises:
+            ValidationError: If the workspace is not running or parameters are invalid.
+            NotFoundError: If the workspace is not found.
+        """
+        if isinstance(stage, PipelineStage):
+            stage = stage.value
+
+        await self._execute_operation(_STOP_PIPELINE_STAGE_OP, stage=stage)
+
+    async def get_stage_status(
+        self, stage: Union[PipelineStage, str]
+    ) -> PipelineStatusList:
+        """Get the status of a pipeline stage.
+
+        Args:
+            stage: The pipeline stage to get status for ('prepare', 'test', or 'run').
+
+        Returns:
+            List of PipelineStatus objects, one per replica/server.
+
+        Raises:
+            ValidationError: If the workspace is not running or parameters are invalid.
+            NotFoundError: If the workspace is not found.
+        """
+        if isinstance(stage, PipelineStage):
+            stage = stage.value
+
+        return await self._execute_operation(_GET_PIPELINE_STATUS_OP, stage=stage)
+
+    async def wait_for_stage(
+        self,
+        stage: Union[PipelineStage, str],
+        *,
+        timeout: float = 300.0,
+        poll_interval: float = 5.0,
+        server: Optional[str] = None,
+    ) -> PipelineStatusList:
+        """Wait for a pipeline stage to complete (success or failure).
+
+        Args:
+            stage: The pipeline stage to wait for.
+            timeout: Maximum time to wait in seconds (default: 300).
+            poll_interval: Time between status checks in seconds (default: 5).
+            server: Optional server name to filter by. If None, waits for all
+                    servers that have steps defined for this stage.
+
+        Returns:
+            Final PipelineStatusList when stage completes.
+
+        Raises:
+            TimeoutError: If the stage doesn't complete within the timeout.
+            ValidationError: If the workspace is not running.
+        """
+        if poll_interval <= 0:
+            raise ValueError("poll_interval must be greater than 0")
+
+        stage_name = stage.value if isinstance(stage, PipelineStage) else stage
+        elapsed = 0.0
+
+        while elapsed < timeout:
+            status_list = await self.get_stage_status(stage)
+
+            # Filter to relevant servers for THIS stage
+            # A server is relevant for this stage if:
+            # - It has steps defined (meaning it participates in this stage)
+            # - OR it's not in 'waiting' state (meaning it has started)
+            relevant_statuses = []
+            for s in status_list:
+                if server is not None:
+                    # Filter by specific server
+                    if s.server == server:
+                        relevant_statuses.append(s)
+                else:
+                    # Include servers that have steps for this stage
+                    # Servers with no steps and waiting state don't participate in this stage
+                    if s.steps:
+                        relevant_statuses.append(s)
+                    elif s.state != PipelineState.WAITING:
+                        # Started but no steps visible yet
+                        relevant_statuses.append(s)
+
+            # If no relevant statuses yet, keep waiting
+            if not relevant_statuses:
+                log.debug(
+                    "Pipeline stage '%s': no servers with steps yet, waiting...",
+                    stage_name,
+                )
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+                continue
+
+            # Check if all relevant servers have completed
+            all_completed = all(
+                s.state
+                in (PipelineState.SUCCESS, PipelineState.FAILURE, PipelineState.ABORTED)
+                for s in relevant_statuses
+            )
+
+            if all_completed:
+                log.debug("Pipeline stage '%s' completed.", stage_name)
+                return PipelineStatusList(root=relevant_statuses)
+
+            # Log current state
+            states = [f"{s.server}={s.state.value}" for s in relevant_statuses]
+            log.debug(
+                "Pipeline stage '%s' status: %s (elapsed: %.1fs)",
+                stage_name,
+                ", ".join(states),
+                elapsed,
+            )
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+        raise TimeoutError(
+            f"Pipeline stage '{stage_name}' did not complete within {timeout} seconds."
+        )

@@ -1,11 +1,64 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 from ....core.base import CamelModel
+
+
+class PipelineStage(str, Enum):
+    """Pipeline stage for operations."""
+
+    PREPARE = "prepare"
+    TEST = "test"
+    RUN = "run"
+
+
+class PipelineState(str, Enum):
+    """State of a pipeline stage or step."""
+
+    WAITING = "waiting"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILURE = "failure"
+    ABORTED = "aborted"
+
+
+class StepStatus(CamelModel):
+    """Status of a single pipeline step."""
+
+    state: PipelineState
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+
+
+class PipelineStatus(CamelModel):
+    """Status of a pipeline stage execution."""
+
+    state: PipelineState
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    steps: List[StepStatus] = Field(default_factory=list)
+    replica: str
+    server: str
+
+
+class PipelineStatusList(RootModel[List[PipelineStatus]]):
+    """List of pipeline status entries (one per replica/server)."""
+
+    root: List[PipelineStatus]
+
+    def __iter__(self):
+        return iter(self.root)
+
+    def __getitem__(self, item):
+        return self.root[item]
+
+    def __len__(self):
+        return len(self.root)
 
 
 class Profile(BaseModel):
