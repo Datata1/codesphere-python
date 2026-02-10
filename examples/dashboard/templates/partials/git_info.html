@@ -1,0 +1,32 @@
+{% if message %}
+<div class="bg-green-100 text-green-800 px-3 py-2 rounded-md text-sm mb-3">
+    ✓ {{ message }}
+</div>
+{% endif %}
+
+{% if error %}
+<div class="bg-red-100 text-red-800 px-3 py-2 rounded-md text-sm mb-3">
+    ✗ {{ error }}
+</div>
+{% endif %}
+
+{% if git_head %}
+<div class="flex items-center justify-between">
+    <div>
+        <p class="text-sm text-gray-600">
+            <span class="font-medium">HEAD:</span> 
+            <span class="font-mono text-cs-primary">{{ git_head.head[:12] }}</span>
+        </p>
+    </div>
+    <form hx-post="/workspaces/{{ workspace.id }}/git/pull"
+          hx-target="#git-info"
+          hx-swap="innerHTML">
+        <button type="submit" 
+                class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition">
+            Pull
+        </button>
+    </form>
+</div>
+{% else %}
+<p class="text-gray-500 text-sm">No git repository configured or workspace not running.</p>
+{% endif %}

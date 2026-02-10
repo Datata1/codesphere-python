@@ -1,0 +1,12 @@
+<div class="bg-gray-900 rounded-md p-4 font-mono text-sm overflow-x-auto">
+    <div class="text-gray-400 mb-2">$ {{ command }}</div>
+    {% if output %}
+    <pre class="text-green-400 whitespace-pre-wrap">{{ output }}</pre>
+    {% endif %}
+    {% if error %}
+    <pre class="text-red-400 whitespace-pre-wrap">{{ error }}</pre>
+    {% endif %}
+    {% if not output and not error %}
+    <p class="text-gray-500">(no output)</p>
+    {% endif %}
+</div>

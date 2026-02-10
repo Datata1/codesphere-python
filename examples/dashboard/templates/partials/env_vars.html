@@ -1,0 +1,40 @@
+<div class="space-y-3">
+    {% if env_vars %}
+    <div class="divide-y divide-gray-200 border rounded-md">
+        {% for var in env_vars %}
+        <div class="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
+            <div class="font-mono text-sm">
+                <span class="text-gray-900 font-medium">{{ var.name }}</span>
+                <span class="text-gray-400">=</span>
+                <span class="text-gray-600">{{ var.value[:20] }}{% if var.value|length > 20 %}...{% endif %}</span>
+            </div>
+            <button 
+                hx-delete="/workspaces/{{ workspace.id }}/env-vars/{{ var.name }}"
+                hx-target="#env-vars"
+                hx-swap="innerHTML"
+                hx-confirm="Delete {{ var.name }}?"
+                class="text-red-500 hover:text-red-700 text-sm">
+                ✕
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">No environment variables set.</p>
+    {% endif %}
+
+    <!-- Add new env var form -->
+    <form hx-post="/workspaces/{{ workspace.id }}/env-vars"
+          hx-target="#env-vars"
+          hx-swap="innerHTML"
+          class="flex space-x-2">
+        <input type="text" name="name" placeholder="VAR_NAME" required
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-cs-primary focus:border-cs-primary">
+        <input type="text" name="value" placeholder="value" required
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-cs-primary focus:border-cs-primary">
+        <button type="submit" 
+                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+            Add
+        </button>
+    </form>
+</div>

@@ -1,0 +1,60 @@
+{% if workspaces %}
+<div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Plan</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-600">Replicas</th>
+                <th class="px-4 py-3 text-right text-sm font-medium text-gray-600">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for item in workspaces %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3">
+                    {% if item.is_running %}
+                    <span class="inline-flex items-center space-x-1">
+                        <span class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></span>
+                        <span class="text-green-700 text-sm">Running</span>
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center space-x-1">
+                        <span class="w-2.5 h-2.5 bg-gray-400 rounded-full"></span>
+                        <span class="text-gray-500 text-sm">Stopped</span>
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="px-4 py-3">
+                    <a href="/workspaces/{{ item.workspace.id }}" class="font-medium text-cs-primary hover:text-cs-secondary">
+                        {{ item.workspace.name }}
+                    </a>
+                    <p class="text-xs text-gray-500">ID: {{ item.workspace.id }}</p>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ item.workspace.plan_id }}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">{{ item.workspace.replicas }}</td>
+                <td class="px-4 py-3 text-right">
+                    <div class="flex items-center justify-end space-x-2">
+                        <a href="/workspaces/{{ item.workspace.id }}" 
+                           class="text-cs-primary hover:text-cs-secondary text-sm font-medium">
+                            View
+                        </a>
+                        <form action="/workspaces/{{ item.workspace.id }}/delete" method="POST" class="inline"
+                              onsubmit="return confirm('Delete {{ item.workspace.name }}?');">
+                            <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center border border-gray-200">
+    <p class="text-gray-500">No workspaces found. Create one using the form above.</p>
+</div>
+{% endif %}
