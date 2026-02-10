@@ -1,5 +1,6 @@
 import asyncio
 import time
+from datetime import datetime, timedelta, timezone
 
 from codesphere import CodesphereSDK
 from codesphere.resources.workspace import WorkspaceCreate
@@ -10,7 +11,7 @@ from codesphere.resources.workspace.landscape import (
 )
 from codesphere.resources.workspace.logs import LogStage
 
-TEAM_ID = 123
+TEAM_ID = 35698
 
 
 async def main():
@@ -27,6 +28,9 @@ async def main():
             WorkspaceCreate(plan_id=plan.id, team_id=TEAM_ID, name=workspace_name)
         )
         print(f"✓ Workspace created (ID: {workspace.id})")
+
+        # Get the team for usage history access
+        team = await sdk.teams.get(team_id=TEAM_ID)
 
         print("Waiting for workspace to start...")
         await workspace.wait_until_running(timeout=300.0, poll_interval=5.0)
@@ -89,6 +93,73 @@ async def main():
                     count += 1
 
         print(f"\n✓ Stream ended ({count} log entries)")
+
+        # ========================================
+        # Usage History Collection
+        # ========================================
+        print("\n--- Usage History ---")
+
+        end_date = datetime.now(timezone.utc)
+        begin_date = end_date - timedelta(days=1)
+
+        print(
+            f"Fetching usage summary from {begin_date.isoformat()} to {end_date.isoformat()}..."
+        )
+        usage_summary = await team.usage.get_landscape_summary(
+            begin_date=begin_date,
+            end_date=end_date,
+            limit=50,
+        )
+
+        print(f"Total resources with usage: {usage_summary.total_items}")
+        print(f"Page {usage_summary.current_page} of {usage_summary.total_pages}")
+
+        if usage_summary.items:
+            print("\nResource Usage Summary:")
+            for item in usage_summary.items:
+                hours = item.usage_seconds / 3600
+                print(f"  • {item.resource_name}")
+                print(f"    - Plan: {item.plan_name}")
+                print(
+                    f"    - Usage: {hours:.2f} hours ({item.usage_seconds:.0f} seconds)"
+                )
+                print(f"    - Replicas: {item.replicas}")
+                print(f"    - Always On: {item.always_on}")
+                print()
+
+            first_resource = usage_summary.items[0]
+            print(f"Fetching events for '{first_resource.resource_name}'...")
+
+            events = await team.usage.get_landscape_events(
+                resource_id=first_resource.resource_id,
+                begin_date=begin_date,
+                end_date=end_date,
+            )
+
+            print(f"Total events: {events.total_items}")
+            for event in events.items:
+                print(
+                    f"  [{event.date.isoformat()}] {event.action.value.upper()} by {event.initiator_email}"
+                )
+
+            print("\nRefreshing usage summary...")
+            await usage_summary.refresh()
+            print(f"✓ Refreshed - still {usage_summary.total_items} items")
+        else:
+            print("No usage data found for the specified time range.")
+
+        print("\n--- Auto-Pagination Example ---")
+        print("Iterating through ALL usage summaries (auto-pagination):")
+        item_count = 0
+        async for item in team.usage.iter_all_landscape_summary(
+            begin_date=begin_date,
+            end_date=end_date,
+            page_size=25,  # Fetch 25 at a time
+        ):
+            item_count += 1
+            print(f"  {item_count}. {item.resource_id}: {item.usage_seconds:.0f}s")
+
+        print(f"\n✓ Total items processed: {item_count}")
 
 
 if __name__ == "__main__":

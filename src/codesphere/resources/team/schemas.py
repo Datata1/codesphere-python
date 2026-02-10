@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 from functools import cached_property
-from pydantic import Field
 from typing import Optional
 
-from .domain.manager import TeamDomainManager
+from pydantic import Field
+
+from ...core import APIOperation, AsyncCallable, _APIOperationExecutor
 from ...core.base import CamelModel
-from ...core import _APIOperationExecutor, APIOperation, AsyncCallable
+from .domain.manager import TeamDomainManager
+from .usage.manager import TeamUsageManager
 
 
 class TeamCreate(CamelModel):
@@ -39,3 +42,8 @@ class Team(TeamBase, _APIOperationExecutor):
     def domains(self) -> TeamDomainManager:
         http_client = self.validate_http_client()
         return TeamDomainManager(http_client, team_id=self.id)
+
+    @cached_property
+    def usage(self) -> TeamUsageManager:
+        http_client = self.validate_http_client()
+        return TeamUsageManager(http_client, team_id=self.id)
