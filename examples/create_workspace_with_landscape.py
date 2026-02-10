@@ -1,7 +1,3 @@
-"""
-Demo: Create a workspace, deploy a landscape profile, and stream logs.
-"""
-
 import asyncio
 import time
 
@@ -14,7 +10,7 @@ from codesphere.resources.workspace.landscape import (
 )
 from codesphere.resources.workspace.logs import LogStage
 
-TEAM_ID = 35698
+TEAM_ID = 123
 
 
 async def main():
@@ -25,8 +21,8 @@ async def main():
             raise ValueError("Micro plan not found")
 
         workspace_name = f"pipeline-demo-{int(time.time())}"
-        print(f"Creating workspace '{workspace_name}'...")
 
+        print(f"Creating workspace '{workspace_name}'...")
         workspace = await sdk.workspaces.create(
             WorkspaceCreate(plan_id=plan.id, team_id=TEAM_ID, name=workspace_name)
         )
@@ -45,7 +41,7 @@ async def main():
             .add_reactive_service("web")
             .plan(plan.id)
             .add_step(
-                'for i in $(seq 1 50); do echo "[$i] Processing request..."; sleep 1; done'
+                'for i in $(seq 1 20); do echo "[$i] Processing request..."; sleep 1; done'
             )
             .add_port(3000, public=True)
             .add_path("/", port=3000)
@@ -82,17 +78,17 @@ async def main():
 
         print("\n--- Run Stage ---")
         await workspace.landscape.start_stage(PipelineStage.RUN, profile="production")
-        print("Started run stage, waiting for logs...\n")
+        print("Started run stage\n")
 
-        print("Streaming logs from 'web' service:")
+        print("Streaming logs from 'web' service (using context manager):")
         count = 0
-        async for entry in workspace.logs.stream_server(step=0, server="web"):
-            if entry.get_text():
-                print(f"  {entry.get_text().strip()}")
-                count += 1
+        async with workspace.logs.open_server_stream(step=0, server="web") as stream:
+            async for entry in stream:
+                if entry.get_text():
+                    print(f"  {entry.get_text().strip()}")
+                    count += 1
 
         print(f"\n✓ Stream ended ({count} log entries)")
-        print(f"✓ Workspace {workspace.id} is still running.")
 
 
 if __name__ == "__main__":

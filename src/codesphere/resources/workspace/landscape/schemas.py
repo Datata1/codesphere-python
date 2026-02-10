@@ -10,16 +10,12 @@ from ....core.base import CamelModel
 
 
 class PipelineStage(str, Enum):
-    """Pipeline stage for operations."""
-
     PREPARE = "prepare"
     TEST = "test"
     RUN = "run"
 
 
 class PipelineState(str, Enum):
-    """State of a pipeline stage or step."""
-
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
@@ -28,16 +24,12 @@ class PipelineState(str, Enum):
 
 
 class StepStatus(CamelModel):
-    """Status of a single pipeline step."""
-
     state: PipelineState
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
 
 
 class PipelineStatus(CamelModel):
-    """Status of a pipeline stage execution."""
-
     state: PipelineState
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
@@ -47,8 +39,6 @@ class PipelineStatus(CamelModel):
 
 
 class PipelineStatusList(RootModel[List[PipelineStatus]]):
-    """List of pipeline status entries (one per replica/server)."""
-
     root: List[PipelineStatus]
 
     def __iter__(self):

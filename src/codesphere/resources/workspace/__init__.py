@@ -1,5 +1,5 @@
 from .git import GitHead, WorkspaceGitManager
-from .logs import LogEntry, LogProblem, LogStage, WorkspaceLogManager
+from .logs import LogEntry, LogProblem, LogStage, LogStream, WorkspaceLogManager
 from .resources import WorkspacesResource
 from .schemas import (
     CommandInput,
@@ -20,6 +20,7 @@ __all__ = [
     "CommandOutput",
     "WorkspaceGitManager",
     "GitHead",
+    "LogStream",
     "WorkspaceLogManager",
     "LogEntry",
     "LogProblem",

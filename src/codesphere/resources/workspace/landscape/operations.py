@@ -25,7 +25,6 @@ _SCALE_OP = APIOperation(
     response_model=type(None),
 )
 
-# Pipeline operations
 _START_PIPELINE_STAGE_OP = APIOperation(
     method="POST",
     endpoint_template="/workspaces/{id}/pipeline/{stage}/start",

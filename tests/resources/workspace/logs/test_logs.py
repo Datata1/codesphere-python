@@ -9,7 +9,13 @@ from codesphere.resources.workspace.logs import (
     LogEntry,
     LogProblem,
     LogStage,
+    LogStream,
     WorkspaceLogManager,
+)
+from codesphere.resources.workspace.logs.operations import (
+    _STREAM_REPLICA_LOGS_OP,
+    _STREAM_SERVER_LOGS_OP,
+    _STREAM_STAGE_LOGS_OP,
 )
 
 
@@ -68,15 +74,90 @@ class TestLogProblem:
         assert problem.detail == "Workspace 123 does not exist"
 
 
-async def mock_stream_logs_factory(entries: list[LogEntry], capture_endpoint: list):
-    """Factory to create a mock _stream_logs that captures the endpoint."""
+class TestStreamOperations:
+    def test_stream_stage_logs_op(self):
+        assert (
+            _STREAM_STAGE_LOGS_OP.endpoint_template
+            == "/workspaces/{id}/logs/{stage}/{step}"
+        )
+        assert _STREAM_STAGE_LOGS_OP.entry_model == LogEntry
 
-    async def mock_stream_logs(endpoint: str):
-        capture_endpoint.append(endpoint)
-        for entry in entries:
-            yield entry
+    def test_stream_server_logs_op(self):
+        assert (
+            _STREAM_SERVER_LOGS_OP.endpoint_template
+            == "/workspaces/{id}/logs/run/{step}/server/{server}"
+        )
+        assert _STREAM_SERVER_LOGS_OP.entry_model == LogEntry
 
-    return mock_stream_logs
+    def test_stream_replica_logs_op(self):
+        assert (
+            _STREAM_REPLICA_LOGS_OP.endpoint_template
+            == "/workspaces/{id}/logs/run/{step}/replica/{replica}"
+        )
+        assert _STREAM_REPLICA_LOGS_OP.entry_model == LogEntry
+
+
+class TestLogStream:
+    def test_init(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test/endpoint", LogEntry, timeout=30.0)
+        assert stream._client == mock_client
+        assert stream._endpoint == "/test/endpoint"
+        assert stream._entry_model == LogEntry
+        assert stream._timeout == 30.0
+
+    def test_init_no_timeout(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test/endpoint", LogEntry)
+        assert stream._timeout is None
+
+    def test_handle_problem_validation_error(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test", LogEntry)
+
+        with pytest.raises(ValidationError):
+            stream._handle_problem('{"status": 400, "reason": "Bad request"}')
+
+    def test_handle_problem_api_error(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test", LogEntry)
+
+        with pytest.raises(APIError) as exc_info:
+            stream._handle_problem('{"status": 404, "reason": "Not found"}')
+        assert exc_info.value.status_code == 404
+
+    def test_handle_problem_invalid_json(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test", LogEntry)
+
+        with pytest.raises(APIError) as exc_info:
+            stream._handle_problem("invalid json")
+        assert "Invalid problem event" in str(exc_info.value)
+
+    def test_parse_data_single_entry(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test", LogEntry)
+
+        entries = stream._parse_data('{"data": "test log", "kind": "I"}')
+        assert len(entries) == 1
+        assert entries[0].data == "test log"
+        assert entries[0].kind == "I"
+
+    def test_parse_data_array(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test", LogEntry)
+
+        entries = stream._parse_data('[{"data": "log1"}, {"data": "log2"}]')
+        assert len(entries) == 2
+        assert entries[0].data == "log1"
+        assert entries[1].data == "log2"
+
+    def test_parse_data_invalid_json(self):
+        mock_client = MagicMock()
+        stream = LogStream(mock_client, "/test", LogEntry)
+
+        entries = stream._parse_data("invalid")
+        assert len(entries) == 0
 
 
 class TestWorkspaceLogManager:
@@ -93,180 +174,40 @@ class TestWorkspaceLogManager:
     def test_init(self, log_manager, mock_http_client):
         assert log_manager._http_client == mock_http_client
         assert log_manager._workspace_id == 123
+        assert log_manager.id == 123
 
-    @pytest.mark.asyncio
-    async def test_stream_builds_correct_endpoint(self, log_manager):
-        """Test that stream() builds the correct endpoint URL."""
-        captured_endpoints: list[str] = []
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            captured_endpoints.append(endpoint)
-            return
-            yield  # Make it a generator
-
-        log_manager._stream_logs = mock_stream_logs
-
-        async for _ in log_manager.stream(stage=LogStage.PREPARE, step=1):
-            pass
-
-        assert captured_endpoints == ["/workspaces/123/logs/prepare/1"]
-
-    @pytest.mark.asyncio
-    async def test_stream_with_string_stage(self, log_manager):
-        """Test that stream() accepts string stage values."""
-        captured_endpoints: list[str] = []
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            captured_endpoints.append(endpoint)
-            return
-            yield
-
-        log_manager._stream_logs = mock_stream_logs
-
-        async for _ in log_manager.stream(stage="test", step=2):
-            pass
-
-        assert captured_endpoints == ["/workspaces/123/logs/test/2"]
-
-    @pytest.mark.asyncio
-    async def test_stream_server_builds_correct_endpoint(self, log_manager):
-        """Test that stream_server() builds the correct endpoint URL."""
-        captured_endpoints: list[str] = []
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            captured_endpoints.append(endpoint)
-            return
-            yield
-
-        log_manager._stream_logs = mock_stream_logs
-
-        async for _ in log_manager.stream_server(step=1, server="web"):
-            pass
-
-        assert captured_endpoints == ["/workspaces/123/logs/run/1/server/web"]
-
-    @pytest.mark.asyncio
-    async def test_stream_replica_builds_correct_endpoint(self, log_manager):
-        """Test that stream_replica() builds the correct endpoint URL."""
-        captured_endpoints: list[str] = []
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            captured_endpoints.append(endpoint)
-            return
-            yield
-
-        log_manager._stream_logs = mock_stream_logs
-
-        async for _ in log_manager.stream_replica(step=2, replica="replica-1"):
-            pass
-
-        assert captured_endpoints == ["/workspaces/123/logs/run/2/replica/replica-1"]
-
-    @pytest.mark.asyncio
-    async def test_collect_returns_list(self, log_manager):
-        """Test that collect() returns a list of log entries."""
-        entries = [
-            LogEntry(data="Log 1"),
-            LogEntry(data="Log 2"),
-            LogEntry(data="Log 3"),
-        ]
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            for entry in entries:
-                yield entry
-
-        log_manager._stream_logs = mock_stream_logs
-
-        result = await log_manager.collect(stage=LogStage.PREPARE, step=1)
-
-        assert len(result) == 3
-        assert result[0].data == "Log 1"
-        assert result[2].data == "Log 3"
-
-    @pytest.mark.asyncio
-    async def test_collect_with_max_entries(self, log_manager):
-        """Test that collect() respects max_entries limit."""
-        entries = [
-            LogEntry(data="Log 1"),
-            LogEntry(data="Log 2"),
-            LogEntry(data="Log 3"),
-        ]
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            for entry in entries:
-                yield entry
-
-        log_manager._stream_logs = mock_stream_logs
-
-        result = await log_manager.collect(
-            stage=LogStage.PREPARE, step=1, max_entries=2
+    def test_build_endpoint(self, log_manager):
+        endpoint = log_manager._build_endpoint(
+            _STREAM_STAGE_LOGS_OP, stage="prepare", step=0
         )
+        assert endpoint == "/workspaces/123/logs/prepare/0"
 
-        assert len(result) == 2
+    def test_build_endpoint_server(self, log_manager):
+        endpoint = log_manager._build_endpoint(
+            _STREAM_SERVER_LOGS_OP, step=0, server="web"
+        )
+        assert endpoint == "/workspaces/123/logs/run/0/server/web"
 
-    @pytest.mark.asyncio
-    async def test_collect_server_returns_list(self, log_manager):
-        """Test that collect_server() returns a list of log entries."""
-        entries = [LogEntry(data="Server log 1")]
+    def test_open_stream_returns_log_stream(self, log_manager):
+        stream = log_manager.open_stream(stage=LogStage.PREPARE, step=0)
+        assert isinstance(stream, LogStream)
+        assert stream._endpoint == "/workspaces/123/logs/prepare/0"
+        assert stream._entry_model == LogEntry
 
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            for entry in entries:
-                yield entry
+    def test_open_stream_with_string_stage(self, log_manager):
+        stream = log_manager.open_stream(stage="test", step=1)
+        assert stream._endpoint == "/workspaces/123/logs/test/1"
 
-        log_manager._stream_logs = mock_stream_logs
+    def test_open_stream_with_timeout(self, log_manager):
+        stream = log_manager.open_stream(stage="run", step=0, timeout=60.0)
+        assert stream._timeout == 60.0
 
-        result = await log_manager.collect_server(step=1, server="web")
+    def test_open_server_stream_returns_log_stream(self, log_manager):
+        stream = log_manager.open_server_stream(step=0, server="web")
+        assert isinstance(stream, LogStream)
+        assert stream._endpoint == "/workspaces/123/logs/run/0/server/web"
 
-        assert len(result) == 1
-        assert result[0].data == "Server log 1"
-
-    @pytest.mark.asyncio
-    async def test_collect_replica_returns_list(self, log_manager):
-        """Test that collect_replica() returns a list of log entries."""
-        entries = [LogEntry(data="Replica log 1")]
-
-        async def mock_stream_logs(endpoint: str, timeout: float = None):
-            for entry in entries:
-                yield entry
-
-        log_manager._stream_logs = mock_stream_logs
-
-        result = await log_manager.collect_replica(step=1, replica="replica-1")
-
-        assert len(result) == 1
-        assert result[0].data == "Replica log 1"
-
-    @pytest.mark.asyncio
-    async def test_process_sse_event_raises_on_problem(self, log_manager):
-        """Test that problem events raise appropriate exceptions."""
-        problem_data = '{"status": 400, "reason": "Workspace is not running"}'
-
-        with pytest.raises(ValidationError) as exc_info:
-            await log_manager._process_sse_event("problem", problem_data)
-
-        assert "Workspace is not running" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_process_sse_event_raises_api_error_for_non_400(self, log_manager):
-        """Test that non-400 problem events raise APIError."""
-        problem_data = '{"status": 404, "reason": "Workspace not found"}'
-
-        with pytest.raises(APIError) as exc_info:
-            await log_manager._process_sse_event("problem", problem_data)
-
-        assert exc_info.value.status_code == 404
-
-    @pytest.mark.asyncio
-    async def test_process_sse_event_data_does_not_raise(self, log_manager):
-        """Test that data events do not raise exceptions."""
-        data = '{"data": "Test log"}'
-        # Should not raise
-        await log_manager._process_sse_event("data", data)
-
-    @pytest.mark.asyncio
-    async def test_process_sse_event_invalid_json_raises(self, log_manager):
-        """Test that invalid JSON in problem events raises APIError."""
-        with pytest.raises(APIError) as exc_info:
-            await log_manager._process_sse_event("problem", "invalid json")
-
-        assert "Invalid problem event" in str(exc_info.value)
+    def test_open_replica_stream_returns_log_stream(self, log_manager):
+        stream = log_manager.open_replica_stream(step=0, replica="replica-1")
+        assert isinstance(stream, LogStream)
+        assert stream._endpoint == "/workspaces/123/logs/run/0/replica/replica-1"
