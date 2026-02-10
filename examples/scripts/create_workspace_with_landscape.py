@@ -11,7 +11,7 @@ from codesphere.resources.workspace.landscape import (
 )
 from codesphere.resources.workspace.logs import LogStage
 
-TEAM_ID = 35698
+TEAM_ID = 123
 
 
 async def main():
@@ -29,7 +29,6 @@ async def main():
         )
         print(f"✓ Workspace created (ID: {workspace.id})")
 
-        # Get the team for usage history access
         team = await sdk.teams.get(team_id=TEAM_ID)
 
         print("Waiting for workspace to start...")
@@ -94,9 +93,6 @@ async def main():
 
         print(f"\n✓ Stream ended ({count} log entries)")
 
-        # ========================================
-        # Usage History Collection
-        # ========================================
         print("\n--- Usage History ---")
 
         end_date = datetime.now(timezone.utc)

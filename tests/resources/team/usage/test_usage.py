@@ -14,7 +14,6 @@ from codesphere.resources.team.usage.schemas import (
 
 @pytest.fixture
 def sample_usage_summary_data():
-    """Sample response data for landscape service usage summary."""
     return {
         "totalItems": 3,
         "limit": 25,
@@ -230,7 +229,6 @@ class TestPaginatedResponse:
         assert response.total_pages == 4
 
     def test_total_pages_with_remainder(self):
-        """total_pages should round up when items don't divide evenly."""
         response = UsageSummaryResponse(
             total_items=101,
             limit=25,
@@ -243,10 +241,7 @@ class TestPaginatedResponse:
 
 
 class TestUsageSummaryResponse:
-    """Tests for the UsageSummaryResponse schema."""
-
     def test_parse_full_response(self, sample_usage_summary_data):
-        """Should correctly parse a full usage summary response."""
         response = UsageSummaryResponse.model_validate(sample_usage_summary_data)
 
         assert response.total_items == 3
@@ -256,7 +251,6 @@ class TestUsageSummaryResponse:
         assert len(response.items) == 3
 
     def test_items_property(self, sample_usage_summary_data):
-        """items property should return the summary list."""
         response = UsageSummaryResponse.model_validate(sample_usage_summary_data)
 
         assert response.items is response.summary
@@ -264,10 +258,7 @@ class TestUsageSummaryResponse:
 
 
 class TestUsageEventsResponse:
-    """Tests for the UsageEventsResponse schema."""
-
     def test_parse_full_response(self, sample_usage_events_data):
-        """Should correctly parse a full usage events response."""
         response = UsageEventsResponse.model_validate(sample_usage_events_data)
 
         assert response.total_items == 4
@@ -277,7 +268,6 @@ class TestUsageEventsResponse:
         assert len(response.items) == 4
 
     def test_items_property(self, sample_usage_events_data):
-        """items property should return the events list."""
         response = UsageEventsResponse.model_validate(sample_usage_events_data)
 
         assert response.items is response.events
@@ -285,11 +275,8 @@ class TestUsageEventsResponse:
 
 
 class TestTeamUsageManager:
-    """Tests for the TeamUsageManager class."""
-
     @pytest.fixture
     def usage_manager(self, mock_http_client_for_resource, sample_usage_summary_data):
-        """Create a TeamUsageManager with mock HTTP client."""
         mock_client = mock_http_client_for_resource(sample_usage_summary_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
         return manager, mock_client
@@ -298,7 +285,6 @@ class TestTeamUsageManager:
     async def test_get_landscape_summary(
         self, mock_http_client_for_resource, sample_usage_summary_data
     ):
-        """get_landscape_summary should return UsageSummaryResponse."""
         mock_client = mock_http_client_for_resource(sample_usage_summary_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
 
@@ -316,7 +302,6 @@ class TestTeamUsageManager:
     async def test_get_landscape_summary_with_pagination(
         self, mock_http_client_for_resource, sample_usage_summary_data
     ):
-        """get_landscape_summary should pass pagination parameters."""
         mock_client = mock_http_client_for_resource(sample_usage_summary_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
 
@@ -336,11 +321,9 @@ class TestTeamUsageManager:
     async def test_get_landscape_summary_clamps_limit(
         self, mock_http_client_for_resource, sample_usage_summary_data
     ):
-        """get_landscape_summary should clamp limit to 1-100 range."""
         mock_client = mock_http_client_for_resource(sample_usage_summary_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
 
-        # Test upper bound
         await manager.get_landscape_summary(
             begin_date=datetime(2024, 1, 1),
             end_date=datetime(2024, 1, 31),
@@ -353,7 +336,6 @@ class TestTeamUsageManager:
     async def test_get_landscape_events(
         self, mock_http_client_for_resource, sample_usage_events_data
     ):
-        """get_landscape_events should return UsageEventsResponse."""
         mock_client = mock_http_client_for_resource(sample_usage_events_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
 
@@ -372,7 +354,6 @@ class TestTeamUsageManager:
     async def test_iter_all_landscape_summary(
         self, mock_http_client_for_resource, sample_usage_summary_data
     ):
-        """iter_all_landscape_summary should yield all items across pages."""
         mock_client = mock_http_client_for_resource(sample_usage_summary_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
 
@@ -390,7 +371,6 @@ class TestTeamUsageManager:
     async def test_iter_all_landscape_events(
         self, mock_http_client_for_resource, sample_usage_events_data
     ):
-        """iter_all_landscape_events should yield all items across pages."""
         mock_client = mock_http_client_for_resource(sample_usage_events_data)
         manager = TeamUsageManager(http_client=mock_client, team_id=12345)
 
@@ -407,11 +387,8 @@ class TestTeamUsageManager:
 
 
 class TestTeamUsageProperty:
-    """Tests for the Team.usage property."""
-
     @pytest.mark.asyncio
     async def test_team_has_usage_property(self, team_model_factory):
-        """Team model should have a usage property that returns TeamUsageManager."""
         team, _ = team_model_factory()
 
         usage_manager = team.usage
