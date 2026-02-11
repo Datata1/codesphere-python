@@ -1,0 +1,19 @@
+{% if error %}
+<div class="bg-red-100 text-red-800 px-3 py-2 rounded-md text-sm mb-3">
+    ✗ {{ error }}
+</div>
+{% endif %}
+
+<div class="bg-gray-900 rounded-md p-4 font-mono text-sm max-h-64 overflow-y-auto">
+    {% if logs %}
+    {% for line in logs %}
+    <div class="text-green-400 whitespace-pre-wrap">{{ line }}</div>
+    {% endfor %}
+    {% else %}
+    <p class="text-gray-500">No logs available.</p>
+    {% endif %}
+</div>
+
+<p class="text-xs text-gray-500 mt-2">
+    Stage: {{ stage }} · Step: {{ step }}{% if server %} · Server: {{ server }}{% endif %}{% if replica is not none %} · Replica: {{ replica }}{% endif %}
+</p>

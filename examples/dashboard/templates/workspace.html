@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}{{ workspace.name }} - Codesphere Dashboard{% endblock %}
+
+{% block breadcrumb %}
+<div class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <nav class="flex items-center space-x-2 text-sm">
+            <a href="/" class="text-gray-500 hover:text-cs-primary">Dashboard</a>
+            <span class="text-gray-400">›</span>
+            <a href="/teams/{{ team.id }}" class="text-gray-500 hover:text-cs-primary">{{ team.name }}</a>
+            <span class="text-gray-400">›</span>
+            <span class="text-gray-900 font-medium">{{ workspace.name }}</span>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Workspace Header -->
+    <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="w-14 h-14 rounded-lg bg-cs-primary flex items-center justify-center text-white font-bold text-xl">
+                    {{ workspace.name[0]|upper }}
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ workspace.name }}</h1>
+                    <p class="text-gray-600">ID: {{ workspace.id }} · Plan: {{ workspace.plan_id }} · Replicas: {{ workspace.replicas }}</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <!-- Status Badge (auto-updates) -->
+                <div hx-get="/partials/workspaces/{{ workspace.id }}/status" 
+                     hx-trigger="every 10s"
+                     hx-swap="innerHTML">
+                    {% include "partials/workspace_status.html" %}
+                </div>
+                
+                <button 
+                    hx-get="/workspaces/{{ workspace.id }}" 
+                    hx-target="body" 
+                    hx-swap="outerHTML"
+                    class="bg-cs-primary hover:bg-cs-secondary text-white px-4 py-2 rounded-md text-sm font-medium transition"
+                >
+                    ↻ Refresh
+                </button>
+                
+                <form action="/workspaces/{{ workspace.id }}/delete" method="POST" 
+                      onsubmit="return confirm('Are you sure you want to delete this workspace?');">
+                    <button type="submit" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                        🗑️ Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs Content -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left Column -->
+        <div class="space-y-6">
+            <!-- Git Info -->
+            <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span>📦</span>
+                    <span>Git Repository</span>
+                </h2>
+                <div id="git-info">
+                    {% include "partials/git_info.html" %}
+                </div>
+            </section>
+
+            <!-- Environment Variables -->
+            <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span>🔐</span>
+                    <span>Environment Variables</span>
+                </h2>
+                <div id="env-vars" 
+                     hx-get="/partials/workspaces/{{ workspace.id }}/env-vars"
+                     hx-trigger="load">
+                    {% include "partials/env_vars.html" %}
+                </div>
+            </section>
+
+            <!-- Command Executor -->
+            <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span>⌨️</span>
+                    <span>Execute Command</span>
+                </h2>
+                <form hx-post="/partials/workspaces/{{ workspace.id }}/execute"
+                      hx-target="#command-output"
+                      hx-swap="innerHTML"
+                      class="space-y-3">
+                    <div class="flex space-x-2">
+                        <input type="text" name="command" placeholder="ls -la" required
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-cs-primary focus:border-cs-primary">
+                        <button type="submit" 
+                                class="bg-cs-primary hover:bg-cs-secondary text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                            Run
+                        </button>
+                    </div>
+                </form>
+                <div id="command-output" class="mt-4">
+                    <!-- Command output will appear here -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column -->
+        <div class="space-y-6">
+            <!-- Pipeline Status -->
+            <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span>🚀</span>
+                    <span>Pipeline / Landscape</span>
+                </h2>
+                <div id="pipeline-status"
+                     hx-get="/partials/workspaces/{{ workspace.id }}/pipeline"
+                     hx-trigger="every 15s">
+                    {% include "partials/pipeline_status.html" %}
+                </div>
+            </section>
+
+            <!-- Logs Viewer -->
+            <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span>📋</span>
+                    <span>Logs</span>
+                </h2>
+                <div class="space-y-3" id="logs-controls"
+                     hx-get="/partials/workspaces/{{ workspace.id }}/logs-controls"
+                     hx-trigger="load"
+                     hx-swap="innerHTML">
+                    <!-- Logs controls will be loaded here with server info from pipeline status -->
+                    <p class="text-gray-500 text-sm">Loading log controls...</p>
+                </div>
+                <div id="logs-output" class="mt-4">
+                    <p class="text-gray-500 text-sm">Select a stage and click "Fetch Logs" to view.</p>
+                </div>
+            </section>
+
+            <!-- Update Workspace -->
+            <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span>⚙️</span>
+                    <span>Update Workspace</span>
+                </h2>
+                <form action="/workspaces/{{ workspace.id }}/update" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                        <input type="text" name="name" value="{{ workspace.name }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Plan</label>
+                        <select name="plan_id"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+                            {% for plan in plans %}
+                            <option value="{{ plan.id }}" {% if plan.id == workspace.plan_id %}selected{% endif %}>
+                                {{ plan.title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Replicas</label>
+                        <input type="number" name="replicas" value="{{ workspace.replicas }}" min="1" max="10"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+                    </div>
+                    <button type="submit" 
+                            class="w-full bg-cs-primary hover:bg-cs-secondary text-white px-4 py-2 rounded-md font-medium transition">
+                        Update Workspace
+                    </button>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

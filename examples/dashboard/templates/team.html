@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ team.name }} - Codesphere Dashboard{% endblock %}
+
+{% block breadcrumb %}
+<div class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <nav class="flex items-center space-x-2 text-sm">
+            <a href="/" class="text-gray-500 hover:text-cs-primary">Dashboard</a>
+            <span class="text-gray-400">›</span>
+            <span class="text-gray-900 font-medium">{{ team.name }}</span>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Team Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            {% if team.avatar_url %}
+            <img src="{{ team.avatar_url }}" alt="{{ team.name }}" class="w-16 h-16 rounded-full">
+            {% else %}
+            <div class="w-16 h-16 rounded-full bg-cs-primary flex items-center justify-center text-white font-bold text-2xl">
+                {{ team.name[0]|upper }}
+            </div>
+            {% endif %}
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">{{ team.name }}</h1>
+                <p class="text-gray-600">Team ID: {{ team.id }} · Datacenter: {{ team.default_data_center_id }}</p>
+            </div>
+        </div>
+        <button 
+            hx-get="/teams/{{ team.id }}" 
+            hx-target="body" 
+            hx-swap="outerHTML"
+            class="bg-cs-primary hover:bg-cs-secondary text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center space-x-2"
+        >
+            <span>↻</span>
+            <span>Refresh</span>
+        </button>
+    </div>
+
+    <!-- Create Workspace Form -->
+    <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+            <span>➕</span>
+            <span>Create New Workspace</span>
+        </h2>
+        <form action="/workspaces/create" method="POST" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <input type="hidden" name="team_id" value="{{ team.id }}">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input type="text" name="name" required placeholder="my-workspace"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Plan</label>
+                <select name="plan_id" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+                    {% for plan in plans %}
+                    <option value="{{ plan.id }}">{{ plan.title }} ({{ plan.characteristics.cpu }} CPU, {{ plan.characteristics.ram }}MB)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Base Image</label>
+                <select name="base_image"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+                    <option value="">Default</option>
+                    {% for image in images %}
+                    <option value="{{ image.id }}">{{ image.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Git URL (optional)</label>
+                <input type="url" name="git_url" placeholder="https://github.com/..."
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-cs-primary focus:border-cs-primary">
+            </div>
+            
+            <div class="flex items-end">
+                <button type="submit" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition">
+                    Create Workspace
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Workspaces List -->
+    <section>
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-800 flex items-center space-x-2">
+                <span>💻</span>
+                <span>Workspaces</span>
+                <span class="bg-gray-200 text-gray-700 text-sm px-2 py-0.5 rounded-full">{{ workspaces|length }}</span>
+            </h2>
+            <button 
+                hx-get="/partials/teams/{{ team.id }}/workspaces"
+                hx-target="#workspace-list"
+                hx-swap="innerHTML"
+                class="text-cs-primary hover:text-cs-secondary text-sm font-medium flex items-center space-x-1"
+            >
+                <span>↻</span>
+                <span>Refresh List</span>
+            </button>
+        </div>
+        
+        <div id="workspace-list">
+            {% include "partials/workspace_list.html" %}
+        </div>
+    </section>
+
+    <!-- Domains Section -->
+    <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+            <span>🌐</span>
+            <span>Custom Domains</span>
+            <span class="bg-gray-200 text-gray-700 text-sm px-2 py-0.5 rounded-full">{{ domains|length }}</span>
+        </h2>
+        
+        {% if domains %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Domain</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for domain in domains %}
+                    <tr>
+                        <td class="px-4 py-3 font-mono text-gray-900">{{ domain.name }}</td>
+                        <td class="px-4 py-3">
+                            <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded">Active</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-sm">No custom domains configured.</p>
+        {% endif %}
+    </section>
+
+    <!-- Usage Summary -->
+    <section class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center space-x-2">
+            <span>📊</span>
+            <span>Usage Summary (Last 7 Days)</span>
+        </h2>
+        
+        {% if usage and usage.items %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Resource</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Plan</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Usage</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-600">Replicas</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for item in usage.items %}
+                    <tr>
+                        <td class="px-4 py-3 font-medium text-gray-900">{{ item.resource_name }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ item.plan_name }}</td>
+                        <td class="px-4 py-3 text-gray-600">{{ (item.usage_seconds / 3600)|round(2) }} hours</td>
+                        <td class="px-4 py-3 text-gray-600">{{ item.replicas }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">
+            Total: {{ usage.total_items }} resources · Page {{ usage.current_page }} of {{ usage.total_pages }}
+        </p>
+        {% else %}
+        <p class="text-gray-500 text-sm">No usage data available for this period.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

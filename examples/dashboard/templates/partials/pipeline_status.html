@@ -1,0 +1,121 @@
+<div class="space-y-3">
+    {% if message %}
+    <div class="bg-green-100 text-green-800 px-3 py-2 rounded-md text-sm">
+        ✓ {{ message }}
+    </div>
+    {% endif %}
+    
+    {% if error %}
+    <div class="bg-red-100 text-red-800 px-3 py-2 rounded-md text-sm">
+        ✗ {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Available Profiles -->
+    <div class="mb-4">
+        <h4 class="text-sm font-medium text-gray-700 mb-2">Profiles</h4>
+        {% if profiles %}
+        <div class="flex flex-wrap gap-2">
+            {% for profile in profiles %}
+            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono">{{ profile.name }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-sm">No profiles configured.</p>
+        {% endif %}
+    </div>
+
+    <!-- Deploy Button -->
+    <form hx-post="/workspaces/{{ workspace.id }}/pipeline/deploy"
+          hx-target="#pipeline-status"
+          hx-swap="innerHTML"
+          class="flex space-x-2 mb-4">
+        <input type="text" name="profile_name" value="production" placeholder="Profile name"
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-cs-primary focus:border-cs-primary">
+        <button type="submit" 
+                class="bg-cs-primary hover:bg-cs-secondary text-white px-4 py-2 rounded-md text-sm font-medium transition">
+            Deploy Profile
+        </button>
+    </form>
+
+    <!-- Pipeline Status -->
+    {% if pipeline_status %}
+    <div class="space-y-2">
+        <h4 class="text-sm font-medium text-gray-700">Pipeline Status</h4>
+        {% for status in pipeline_status %}
+        <div class="border rounded-md p-3 bg-gray-50">
+            <div class="flex items-center justify-between mb-2">
+                <span class="font-medium text-gray-900">{{ status.server }}</span>
+                <span class="text-xs text-gray-500">Replica: {{ status.replica }}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                {% if status.state.value == 'running' %}
+                <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                <span class="text-blue-700 text-sm">Running</span>
+                {% elif status.state.value == 'success' %}
+                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                <span class="text-green-700 text-sm">Success</span>
+                {% elif status.state.value == 'failure' %}
+                <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                <span class="text-red-700 text-sm">Failed</span>
+                {% elif status.state.value == 'waiting' %}
+                <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                <span class="text-yellow-700 text-sm">Waiting</span>
+                {% else %}
+                <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                <span class="text-gray-600 text-sm">{{ status.state.value }}</span>
+                {% endif %}
+            </div>
+            {% if status.steps %}
+            <div class="mt-2 flex space-x-1">
+                {% for step in status.steps %}
+                <div class="w-6 h-2 rounded 
+                    {% if step.state.value == 'success' %}bg-green-500
+                    {% elif step.state.value == 'running' %}bg-blue-500 animate-pulse
+                    {% elif step.state.value == 'failure' %}bg-red-500
+                    {% else %}bg-gray-300{% endif %}">
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Stage Controls -->
+    <div class="mt-4 space-y-2">
+        <h4 class="text-sm font-medium text-gray-700">Start Stage</h4>
+        <div class="flex space-x-2">
+            <form hx-post="/workspaces/{{ workspace.id }}/pipeline/start/prepare"
+                  hx-target="#pipeline-status"
+                  hx-swap="innerHTML"
+                  class="inline">
+                <input type="hidden" name="profile" value="production">
+                <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm transition">
+                    Prepare
+                </button>
+            </form>
+            <form hx-post="/workspaces/{{ workspace.id }}/pipeline/start/test"
+                  hx-target="#pipeline-status"
+                  hx-swap="innerHTML"
+                  class="inline">
+                <input type="hidden" name="profile" value="production">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition">
+                    Test
+                </button>
+            </form>
+            <form hx-post="/workspaces/{{ workspace.id }}/pipeline/start/run"
+                  hx-target="#pipeline-status"
+                  hx-swap="innerHTML"
+                  class="inline">
+                <input type="hidden" name="profile" value="production">
+                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition">
+                    Run
+                </button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-sm">No pipeline status available. Deploy a profile to get started.</p>
+    {% endif %}
+</div>
