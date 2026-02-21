@@ -1,0 +1,127 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.19.9"
+  },
+  "cells": [
+    {
+      "id": "Xref",
+      "code_hash": "b644dc74dd8d508eaae2be7737ef81dc",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"workspaces-table-view\">\ud83d\udcca Workspaces Table View</h2></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "BYtC",
+      "code_hash": "e6b0735edc920d88b7d92d3e103f1509",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"pipeline-operations\">\ud83d\udd04 Pipeline Operations</h2>\n<span class=\"paragraph\">Select a workspace and run pipeline stages:</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "emfo",
+      "code_hash": "549109803e27fa3662b974abe5cd3297",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h2 id=\"raw-sdk-objects\">\ud83d\udd27 Raw SDK Objects</h2>\n<span class=\"paragraph\">Explore the raw SDK objects and their attributes:</span></span>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "setup",
+      "code_hash": "5f9c6b4a4456105ace5ddf61f7b95989",
+      "outputs": [
+        {
+          "type": "error",
+          "ename": "exception",
+          "evalue": "No module named 'codesphere'",
+          "traceback": []
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "<span class=\"codehilite\"><div class=\"highlight\"><pre><span></span><span class=\"gt\">Traceback (most recent call last):</span>\n  File <span class=\"nb\">&quot;/var/folders/py/gnpxcghn36dc053khvlj7_0h0000gn/T/marimo_93616/__marimo__cell_setup_.py&quot;</span>, line <span class=\"m\">4</span>, in <span class=\"n\">&lt;module&gt;</span>\n<span class=\"w\">    </span><span class=\"kn\">from</span><span class=\"w\"> </span><span class=\"nn\">codesphere</span><span class=\"w\"> </span><span class=\"kn\">import</span> <span class=\"n\">CodesphereSDK</span>\n<span class=\"gr\">ModuleNotFoundError</span>: <span class=\"n\">No module named &#39;codesphere&#39;</span>\n</pre></div>\n</span>",
+          "mimetype": "application/vnd.marimo+traceback"
+        }
+      ]
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "9379d4e908c9a731c44b0865b0b0f1da",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "7ddc949a1dcf7183cdeaff4dcefaf4ee",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "4406e2bfd35d604c71cada3962715e04",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "e601d620a685a51c25a8f56259223c40",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "536988c0c1f31bd89f5d82819e79a9bb",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "PKri",
+      "code_hash": "7847d5a1d4aeee6ac2f31c394ef300c9",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "SFPL",
+      "code_hash": "74de06e5fc37c8c2ae33b89b21b17634",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "RGSE",
+      "code_hash": "adc7152fa7a00566345b6670d70b52bb",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Kclp",
+      "code_hash": "cb1247882081963174b9cb4e9331f843",
+      "outputs": [],
+      "console": []
+    },
+    {
+      "id": "Hstk",
+      "code_hash": "8ba26b4b5edc9b3c47bb7d2e21ee2828",
+      "outputs": [],
+      "console": []
+    }
+  ]
+}
