@@ -19,3 +19,5 @@ env/
 *.env
 
 .pytest_cache
+
+__marimo__

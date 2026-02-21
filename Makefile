@@ -2,14 +2,11 @@
 
 .DEFAULT_GOAL := help
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-
 CURRENT_VERSION = $(shell grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
 
 help: ## Shows a help message with all available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# ─── Setup ────────────────────────────────────────────────────────────────────
 
 install: ## Sets up the development environment
 	@echo ">>> Setting up the development environment..."
@@ -21,7 +18,6 @@ install: ## Sets up the development environment
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit --hook-type pre-push
 	@echo "\n\033[0;32mSetup complete! Please activate the virtual environment with 'source .venv/bin/activate'.\033[0m"
 
-# ─── Code Quality ────────────────────────────────────────────────────────────
 
 lint: ## Checks code quality with ruff
 	@echo ">>> Checking code quality with ruff..."
@@ -30,8 +26,6 @@ lint: ## Checks code quality with ruff
 format: ## Formats code with ruff
 	@echo ">>> Formatting code with ruff..."
 	uv run ruff format src
-
-# ─── Testing ─────────────────────────────────────────────────────────────────
 
 test: ## Runs all tests with pytest
 	@echo ">>> Running all tests with pytest..."
@@ -52,8 +46,6 @@ test-integration: ## Runs integration tests (requires CS_TOKEN env var or .env f
 		exit 1; \
 	fi; \
 	uv run pytest tests/integration -v --run-integration
-
-# ─── Versioning & Release ────────────────────────────────────────────────────
 
 version: ## Shows the current project version
 	@echo "$(CURRENT_VERSION)"
@@ -139,16 +131,12 @@ release: ## Bumps version, updates changelog, commits, tags, and pushes. Usage: 
 	git push --follow-tags
 	@echo "\n\033[0;32m✅ Released v$(VERSION). GitHub Actions will publish to PyPI and create the GitHub Release.\033[0m"
 
-# ─── Publishing ──────────────────────────────────────────────────────────────
-
 pypi: ## Builds and publishes to PyPI (usually called by CI)
 	@echo "\n>>> Building package for distribution..."
 	uv build
 	@echo "\n>>> Publishing to PyPI..."
 	uv publish
 	@echo "\n\033[0;32mPyPI release complete!\033[0m"
-
-# ─── Utilities ───────────────────────────────────────────────────────────────
 
 tree: ## Shows filetree in terminal without uninteresting files
 	tree -I "*.pyc|*.lock"
