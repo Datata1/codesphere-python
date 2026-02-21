@@ -58,6 +58,8 @@ bump: ## Bumps the version. Usage: make bump VERSION=0.5.0
 	fi
 	@echo ">>> Bumping version from $(CURRENT_VERSION) to $(VERSION)..."
 	@sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	@echo ">>> Updating lockfile..."
+	uv lock
 	@echo "\033[0;32mVersion updated to $(VERSION) in pyproject.toml\033[0m"
 
 changelog: ## Generates a changelog entry from git log since last tag. Usage: make changelog [VERSION=x.y.z]
@@ -123,7 +125,7 @@ release: ## Bumps version, updates changelog, commits, tags, and pushes. Usage: 
 	$(MAKE) changelog VERSION=$(VERSION)
 	@# Step 3: Commit and tag
 	@echo ">>> Committing release..."
-	git add pyproject.toml CHANGELOG.md
+	git add pyproject.toml CHANGELOG.md uv.lock
 	git commit -m "release: v$(VERSION)"
 	git tag -a "v$(VERSION)" -m "Release $(VERSION)"
 	@# Step 4: Push commit and tag

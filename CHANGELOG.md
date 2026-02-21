@@ -1,3 +1,33 @@
+## v1.0.0 (2026-02-21)
+
+### Features
+
+- feat(usage): Add usage history manager (#49)
+- feat(pipeline-stream): add log stream (#46)
+- feat(git): add git resource (#45)
+- feat(landscape): add landscape resource (#41)
+- feat(model-export): provide model methods to export data (#40)
+- feat(excetions): add base exceptions (#39)
+- feat(agent): add copilot instructions (#35)
+- feat(domain): add domains resource (#33)
+- feat(workspace): impleöment base operations for workspaces (#32)
+
+### Refactors
+
+- refactor: Change README file (#37)
+- refactor(filetree): reorganize files (#30)
+- refactor(team): streamline api operations pattern (#29)
+
+### Other
+
+- release process (#51)
+- demo(dashboard): add dashboard demo (#50)
+- refac(commit-hook): remove commitizen (#38)
+- test: fix ci
+- test(suite): set up initial testsuite (#36)
+- chore(test): bla bla (#28)
+- chore(types): clean types annotations (#10)
+
 ## v0.4.0 (2025-07-22)
 
 ### Feat
