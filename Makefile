@@ -1,9 +1,12 @@
-.PHONY: help install commit lint format test test-integration test-unit bump
+.PHONY: help install lint format test test-integration test-unit bump release pypi tree version changelog
 
 .DEFAULT_GOAL := help
 
+CURRENT_VERSION = $(shell grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+
 help: ## Shows a help message with all available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
 
 install: ## Sets up the development environment
 	@echo ">>> Setting up the development environment..."
@@ -14,15 +17,6 @@ install: ## Sets up the development environment
 	@echo "3. Installing git hooks with pre-commit..."
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-commit --hook-type pre-push
 	@echo "\n\033[0;32mSetup complete! Please activate the virtual environment with 'source .venv/bin/activate'.\033[0m"
-
-commit: ## Starts Commitizen for a guided commit message
-	@echo ">>> Starting Commitizen for a guided commit message..."
-	@if git diff --cached --quiet; then \
-		echo "\033[0;33mWarning: No changes added to commit (please use 'git add ...' first).\033[0m"; \
-		exit 1; \
-	fi
-	uv run cz commit
-	uv run cz bump --changelog --allow-no-commit
 
 
 lint: ## Checks code quality with ruff
@@ -53,35 +47,96 @@ test-integration: ## Runs integration tests (requires CS_TOKEN env var or .env f
 	fi; \
 	uv run pytest tests/integration -v --run-integration
 
-release: ## Pushes a new tag and release
-	@echo ">>> Starting release process..."
-	git config --global push.followTags true
+version: ## Shows the current project version
+	@echo "$(CURRENT_VERSION)"
 
-	@echo "\n>>> Verifying tag and pushing to remote..."
-	export VERSION=$$(uv run cz version --project); \
-	if [ -z "$${VERSION}" ]; then \
-		echo "\033[0;31mERROR: Could not determine version using 'cz version --project'.\033[0m"; \
+bump: ## Bumps the version. Usage: make bump VERSION=0.5.0
+	@if [ -z "$(VERSION)" ]; then \
+		echo "\033[0;31mERROR: VERSION is required. Usage: make bump VERSION=0.5.0\033[0m"; \
+		echo "  Current version: $(CURRENT_VERSION)"; \
 		exit 1; \
-	fi; \
-	echo "--- Found project version: v$${VERSION} ---"; \
-	if git rev-parse "v$${VERSION}" >/dev/null 2>&1; then \
-		echo "--- Verified local tag v$${VERSION} exists. ---"; \
+	fi
+	@echo ">>> Bumping version from $(CURRENT_VERSION) to $(VERSION)..."
+	@sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	@echo "\033[0;32mVersion updated to $(VERSION) in pyproject.toml\033[0m"
+
+changelog: ## Generates a changelog entry from git log since last tag. Usage: make changelog [VERSION=x.y.z]
+	@NEW_VERSION=$${VERSION:-$(CURRENT_VERSION)}; \
+	LAST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo ""); \
+	DATE=$$(date +%Y-%m-%d); \
+	echo ">>> Generating changelog for v$${NEW_VERSION} ($${DATE})..."; \
+	TMPFILE=$$(mktemp); \
+	echo "## v$${NEW_VERSION} ($${DATE})" > $$TMPFILE; \
+	echo "" >> $$TMPFILE; \
+	if [ -n "$$LAST_TAG" ]; then \
+		FEATS=$$(git log $${LAST_TAG}..HEAD --pretty=format:"- %s" --grep="^feat" 2>/dev/null); \
+		FIXES=$$(git log $${LAST_TAG}..HEAD --pretty=format:"- %s" --grep="^fix" 2>/dev/null); \
+		REFACTORS=$$(git log $${LAST_TAG}..HEAD --pretty=format:"- %s" --grep="^refactor" 2>/dev/null); \
+		OTHERS=$$(git log $${LAST_TAG}..HEAD --pretty=format:"- %s" --invert-grep --grep="^feat" --grep="^fix" --grep="^refactor" 2>/dev/null); \
 	else \
-		echo "\033[0;31mERROR: Git tag v$${VERSION} was not found! Please check for errors.\033[0m"; \
-		exit 1; \
+		FEATS=$$(git log --pretty=format:"- %s" --grep="^feat" 2>/dev/null); \
+		FIXES=$$(git log --pretty=format:"- %s" --grep="^fix" 2>/dev/null); \
+		REFACTORS=$$(git log --pretty=format:"- %s" --grep="^refactor" 2>/dev/null); \
+		OTHERS=""; \
 	fi; \
-	echo "--- Pushing commit and tag to remote... ---"; \
-	git tag -d v$${VERSION}; \
-	git tag -a v$${VERSION} -m "Release $${VERSION}"; \
-	git push --follow-tags; \
-	echo "\n\033[0;32m✅ SUCCESS: Tag v$${VERSION} pushed to GitHub. The release workflow has been triggered.\033[0m"
+	if [ -n "$$FEATS" ]; then echo "### Features\n" >> $$TMPFILE; echo "$$FEATS" >> $$TMPFILE; echo "" >> $$TMPFILE; fi; \
+	if [ -n "$$FIXES" ]; then echo "### Fixes\n" >> $$TMPFILE; echo "$$FIXES" >> $$TMPFILE; echo "" >> $$TMPFILE; fi; \
+	if [ -n "$$REFACTORS" ]; then echo "### Refactors\n" >> $$TMPFILE; echo "$$REFACTORS" >> $$TMPFILE; echo "" >> $$TMPFILE; fi; \
+	if [ -n "$$OTHERS" ]; then echo "### Other\n" >> $$TMPFILE; echo "$$OTHERS" >> $$TMPFILE; echo "" >> $$TMPFILE; fi; \
+	if [ -f CHANGELOG.md ]; then \
+		cat CHANGELOG.md >> $$TMPFILE; \
+	fi; \
+	mv $$TMPFILE CHANGELOG.md; \
+	echo "\033[0;32mChangelog updated.\033[0m"
 
-pypi: ## publishes to PyPI
+release: ## Bumps version, updates changelog, commits, tags, and pushes. Usage: make release VERSION=0.5.0
+	@if [ -z "$(VERSION)" ]; then \
+		echo "\033[0;31mERROR: VERSION is required. Usage: make release VERSION=0.5.0\033[0m"; \
+		echo "  Current version: $(CURRENT_VERSION)"; \
+		exit 1; \
+	fi
+	@echo ">>> Starting release v$(VERSION)..."
+	@# Guard: ensure working tree is clean (except for staged changes)
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "\033[0;33mWarning: You have uncommitted changes. Please commit or stash them first.\033[0m"; \
+		git status --short; \
+		exit 1; \
+	fi
+	@# Guard: ensure we are on main branch
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$BRANCH" != "main" ]; then \
+		echo "\033[0;33mWarning: You are on branch '$$BRANCH', not 'main'. Continue? [y/N]\033[0m"; \
+		read -r CONFIRM; \
+		if [ "$$CONFIRM" != "y" ] && [ "$$CONFIRM" != "Y" ]; then \
+			echo "Aborted."; \
+			exit 1; \
+		fi; \
+	fi
+	@# Guard: ensure tag does not already exist
+	@if git rev-parse "v$(VERSION)" >/dev/null 2>&1; then \
+		echo "\033[0;31mERROR: Tag v$(VERSION) already exists.\033[0m"; \
+		exit 1; \
+	fi
+	@# Step 1: Bump version in pyproject.toml
+	$(MAKE) bump VERSION=$(VERSION)
+	@# Step 2: Update CHANGELOG.md
+	$(MAKE) changelog VERSION=$(VERSION)
+	@# Step 3: Commit and tag
+	@echo ">>> Committing release..."
+	git add pyproject.toml CHANGELOG.md
+	git commit -m "release: v$(VERSION)"
+	git tag -a "v$(VERSION)" -m "Release $(VERSION)"
+	@# Step 4: Push commit and tag
+	@echo ">>> Pushing to remote..."
+	git push --follow-tags
+	@echo "\n\033[0;32m✅ Released v$(VERSION). GitHub Actions will publish to PyPI and create the GitHub Release.\033[0m"
+
+pypi: ## Builds and publishes to PyPI (usually called by CI)
 	@echo "\n>>> Building package for distribution..."
 	uv build
 	@echo "\n>>> Publishing to PyPI..."
 	uv publish
-	@echo "\n\033[0;32mPyPI release complete! The GitHub Action will now create the GitHub Release.\033[0m"
+	@echo "\n\033[0;32mPyPI release complete!\033[0m"
 
-tree: ## shows filetree in terminal without uninteresting files
+tree: ## Shows filetree in terminal without uninteresting files
 	tree -I "*.pyc|*.lock"

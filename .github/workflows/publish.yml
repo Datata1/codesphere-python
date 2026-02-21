@@ -4,15 +4,13 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
 
 env:
   UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
 jobs:
-  uv-example:
-    name: python
+  publish:
+    name: Publish to PyPI & GitHub Release
     runs-on: ubuntu-latest
 
     permissions:
