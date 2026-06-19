@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://codesphere.com/img/codesphere-light.svg">
     <source media="(prefers-color-scheme: light)" srcset="https://codesphere.com/img/codesphere-dark.svg">
-    <img src="https://codesphere.com/img/codesphere-light.svg" alt="Codesphere" width="300">
+    <img src="https://codesphere.com/images/Code_Generated_Image.png" alt="Codesphere" width="300">
   </picture>
 </p>
 
