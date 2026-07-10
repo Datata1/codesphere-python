@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Type
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -25,7 +25,7 @@ class RequestTestCase:
     use_context_manager: bool
     payload: Any = None
     mock_status_code: int = 200
-    expected_exception: Optional[Type[Exception]] = None
+    expected_exception: type[Exception] | None = None
 
 
 request_test_cases = [
@@ -114,15 +114,15 @@ class TestAPIHttpClient:
         mock_http_client.request.return_value = mock_response
 
         if case.expected_exception:
-            with pytest.raises(case.expected_exception):
-                with patch("httpx.AsyncClient", return_value=mock_http_client):
-                    if case.use_context_manager:
-                        async with api_http_client:
-                            await getattr(api_http_client, case.method)(
-                                "/test-endpoint"
-                            )
-                    else:
+            with (
+                pytest.raises(case.expected_exception),
+                patch("httpx.AsyncClient", return_value=mock_http_client),
+            ):
+                if case.use_context_manager:
+                    async with api_http_client:
                         await getattr(api_http_client, case.method)("/test-endpoint")
+                else:
+                    await getattr(api_http_client, case.method)("/test-endpoint")
             return
 
         with patch("httpx.AsyncClient", return_value=mock_http_client):

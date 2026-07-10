@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from functools import cached_property
-from typing import Dict, List, Optional
 
 from ...core import _APIOperationExecutor
 from ...core.base import CamelModel
@@ -20,17 +19,17 @@ class WorkspaceCreate(CamelModel):
     team_id: int
     name: str
     plan_id: int
-    base_image: Optional[str] = None
+    base_image: str | None = None
     is_private_repo: bool = True
     replicas: int = 1
-    git_url: Optional[str] = None
-    initial_branch: Optional[str] = None
-    clone_depth: Optional[int] = None
-    source_workspace_id: Optional[int] = None
-    welcome_message: Optional[str] = None
-    vpn_config: Optional[str] = None
-    restricted: Optional[bool] = None
-    env: Optional[List[EnvVar]] = None
+    git_url: str | None = None
+    initial_branch: str | None = None
+    clone_depth: int | None = None
+    source_workspace_id: int | None = None
+    welcome_message: str | None = None
+    vpn_config: str | None = None
+    restricted: bool | None = None
+    env: list[EnvVar] | None = None
 
 
 class WorkspaceBase(CamelModel):
@@ -40,29 +39,29 @@ class WorkspaceBase(CamelModel):
     plan_id: int
     is_private_repo: bool
     replicas: int
-    base_image: Optional[str] = None
+    base_image: str | None = None
     data_center_id: int
     user_id: int
-    git_url: Optional[str] = None
-    initial_branch: Optional[str] = None
-    source_workspace_id: Optional[int] = None
-    welcome_message: Optional[str] = None
-    vpn_config: Optional[str] = None
+    git_url: str | None = None
+    initial_branch: str | None = None
+    source_workspace_id: int | None = None
+    welcome_message: str | None = None
+    vpn_config: str | None = None
     restricted: bool
 
 
 class WorkspaceUpdate(CamelModel):
-    plan_id: Optional[int] = None
-    base_image: Optional[str] = None
-    name: Optional[str] = None
-    replicas: Optional[int] = None
-    vpn_config: Optional[str] = None
-    restricted: Optional[bool] = None
+    plan_id: int | None = None
+    base_image: str | None = None
+    name: str | None = None
+    replicas: int | None = None
+    vpn_config: str | None = None
+    restricted: bool | None = None
 
 
 class CommandInput(CamelModel):
     command: str
-    env: Optional[Dict[str, str]] = None
+    env: dict[str, str] | None = None
 
 
 class CommandOutput(CamelModel):
@@ -122,7 +121,7 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
         )
 
     async def execute_command(
-        self, command: str, env: Optional[Dict[str, str]] = None
+        self, command: str, env: dict[str, str] | None = None
     ) -> CommandOutput:
         from .operations import _EXECUTE_COMMAND_OP
 

@@ -1,6 +1,7 @@
+import contextlib
 import logging
 import os
-from typing import AsyncGenerator, List, Optional
+from collections.abc import AsyncGenerator
 
 import pytest
 from dotenv import load_dotenv
@@ -51,7 +52,7 @@ def integration_token() -> str:
 
 
 @pytest.fixture(scope="session")
-def integration_team_id() -> Optional[int]:
+def integration_team_id() -> int | None:
     team_id = os.environ.get("CS_TEST_TEAM_ID")
     return int(team_id) if team_id else None
 
@@ -86,7 +87,7 @@ async def session_sdk_client(integration_token) -> AsyncGenerator[CodesphereSDK,
 @pytest.fixture(scope="session")
 async def test_team_id(
     session_sdk_client: CodesphereSDK,
-    integration_team_id: Optional[int],
+    integration_team_id: int | None,
 ) -> int:
     if integration_team_id:
         return integration_team_id
@@ -115,8 +116,8 @@ async def test_workspaces(
     session_sdk_client: CodesphereSDK,
     test_team_id: int,
     test_plan_id: int,
-) -> AsyncGenerator[List[Workspace], None]:
-    created_workspaces: List[Workspace] = []
+) -> AsyncGenerator[list[Workspace], None]:
+    created_workspaces: list[Workspace] = []
 
     workspace_configs = [
         {"name": f"{TEST_WORKSPACE_PREFIX}-1", "git_url": None},
@@ -140,10 +141,8 @@ async def test_workspaces(
         except Exception as e:
             log.error(f"Failed to create test workspace {config['name']}: {e}")
             for ws in created_workspaces:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.delete()
-                except Exception:
-                    pass
             pytest.fail(f"Failed to create test workspaces: {e}")
 
     yield created_workspaces
@@ -158,12 +157,12 @@ async def test_workspaces(
 
 
 @pytest.fixture(scope="session")
-async def test_workspace(test_workspaces: List[Workspace]) -> Workspace:
+async def test_workspace(test_workspaces: list[Workspace]) -> Workspace:
     return test_workspaces[0]
 
 
 @pytest.fixture(scope="session")
-def git_workspace_id(test_workspaces: List[Workspace]) -> int:
+def git_workspace_id(test_workspaces: list[Workspace]) -> int:
     return test_workspaces[1].id
 
 

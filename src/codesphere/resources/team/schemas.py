@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Optional
 
 from pydantic import Field
 
@@ -19,12 +18,12 @@ class TeamCreate(CamelModel):
 class TeamBase(CamelModel):
     id: int
     name: str
-    description: Optional[str] = None
-    avatar_id: Optional[str] = None
-    avatar_url: Optional[str] = None
+    description: str | None = None
+    avatar_id: str | None = None
+    avatar_url: str | None = None
     is_first: bool
     default_data_center_id: int
-    role: Optional[int] = None
+    role: int | None = None
 
 
 class Team(TeamBase, _APIOperationExecutor):

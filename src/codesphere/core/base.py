@@ -1,4 +1,4 @@
-from typing import Any, Generic, List, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 import yaml
 from pydantic import BaseModel, ConfigDict, RootModel
@@ -75,8 +75,8 @@ class CamelModel(BaseModel):
         )
 
 
-class ResourceList(RootModel[List[ModelT]], Generic[ModelT]):
-    root: List[ModelT]
+class ResourceList(RootModel[list[ModelT]], Generic[ModelT]):
+    root: list[ModelT]
 
     def __iter__(self):
         return iter(self.root)

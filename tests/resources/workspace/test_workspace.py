@@ -3,8 +3,8 @@ import pytest
 from codesphere.resources.workspace import (
     Workspace,
     WorkspaceCreate,
-    WorkspaceUpdate,
     WorkspaceStatus,
+    WorkspaceUpdate,
 )
 
 
@@ -67,7 +67,7 @@ class TestWorkspacesResource:
     async def test_list_items_have_http_client_injected(
         self, workspaces_resource_factory, sample_workspace_list_data
     ):
-        """Items returned from list() should have _http_client injected and be able to call instance methods."""
+        """Items from list() should get _http_client injected for instance calls."""
         resource, mock_client = workspaces_resource_factory(sample_workspace_list_data)
 
         result = await resource.list(team_id=12345)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from ....core.handler import _APIOperationExecutor
 from ....http_client import APIHttpClient
@@ -29,8 +28,8 @@ class WorkspaceGitManager(_APIOperationExecutor):
 
     async def pull(
         self,
-        remote: Optional[str] = None,
-        branch: Optional[str] = None,
+        remote: str | None = None,
+        branch: str | None = None,
     ) -> None:
         if remote is not None and branch is not None:
             await self._execute_operation(

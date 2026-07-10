@@ -1,6 +1,7 @@
 import logging
+from typing import Any, TypeVar
+
 from pydantic import BaseModel
-from typing import Any, Dict, List, Type, TypeVar
 
 log = logging.getLogger(__name__)
 
@@ -18,11 +19,11 @@ def update_model_fields(target: BaseModel, source: BaseModel) -> None:
 
 
 def dict_to_model_list(
-    data: Dict[Any, Any],
-    model_cls: Type[T],
-    key_field: str = None,
-    value_field: str = None,
-) -> List[T]:
+    data: dict[Any, Any],
+    model_cls: type[T],
+    key_field: str | None = None,
+    value_field: str | None = None,
+) -> list[T]:
     if key_field is None or value_field is None:
         for name, field_info in model_cls.model_fields.items():
             if field_info.json_schema_extra:

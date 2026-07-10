@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
 
 from ....core.base import ResourceList
 from ....core.handler import _APIOperationExecutor
@@ -55,7 +55,7 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
         self._workspace_id = workspace_id
         self.id = workspace_id
 
-    async def _run_command(self, command: str) -> "CommandOutput":
+    async def _run_command(self, command: str) -> CommandOutput:
         from ..operations import _EXECUTE_COMMAND_OP
         from ..schemas import CommandInput
 
@@ -66,7 +66,7 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
     async def list_profiles(self) -> ResourceList[Profile]:
         result = await self._run_command("ls -1 *.yml 2>/dev/null || true")
 
-        profiles: List[Profile] = []
+        profiles: list[Profile] = []
         if result.output:
             for line in result.output.strip().split("\n"):
                 if match := _PROFILE_FILE_PATTERN.match(line.strip()):
@@ -74,13 +74,10 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
 
         return ResourceList[Profile](root=profiles)
 
-    async def save_profile(self, name: str, config: Union[ProfileConfig, str]) -> None:
+    async def save_profile(self, name: str, config: ProfileConfig | str) -> None:
         filename = _profile_filename(name)
 
-        if isinstance(config, ProfileConfig):
-            yaml_content = config.to_yaml()
-        else:
-            yaml_content = config
+        yaml_content = config.to_yaml() if isinstance(config, ProfileConfig) else config
 
         body = yaml_content if yaml_content.endswith("\n") else yaml_content + "\n"
         await self._run_command(
@@ -94,7 +91,7 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
     async def delete_profile(self, name: str) -> None:
         await self._run_command(f"rm -f {_profile_filename(name)}")
 
-    async def deploy(self, profile: Optional[str] = None) -> None:
+    async def deploy(self, profile: str | None = None) -> None:
         if profile is not None:
             _validate_profile_name(profile)
             await self._execute_operation(_DEPLOY_WITH_PROFILE_OP, profile=profile)
@@ -104,13 +101,13 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
     async def teardown(self) -> None:
         await self._execute_operation(_TEARDOWN_OP)
 
-    async def scale(self, services: Dict[str, int]) -> None:
+    async def scale(self, services: dict[str, int]) -> None:
         await self._execute_operation(_SCALE_OP, data=services)
 
     async def start_stage(
         self,
-        stage: Union[PipelineStage, str],
-        profile: Optional[str] = None,
+        stage: PipelineStage | str,
+        profile: str | None = None,
     ) -> None:
         if isinstance(stage, PipelineStage):
             stage = stage.value
@@ -123,15 +120,13 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
         else:
             await self._execute_operation(_START_PIPELINE_STAGE_OP, stage=stage)
 
-    async def stop_stage(self, stage: Union[PipelineStage, str]) -> None:
+    async def stop_stage(self, stage: PipelineStage | str) -> None:
         if isinstance(stage, PipelineStage):
             stage = stage.value
 
         await self._execute_operation(_STOP_PIPELINE_STAGE_OP, stage=stage)
 
-    async def get_stage_status(
-        self, stage: Union[PipelineStage, str]
-    ) -> PipelineStatusList:
+    async def get_stage_status(self, stage: PipelineStage | str) -> PipelineStatusList:
         if isinstance(stage, PipelineStage):
             stage = stage.value
 
@@ -139,11 +134,11 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
 
     async def wait_for_stage(
         self,
-        stage: Union[PipelineStage, str],
+        stage: PipelineStage | str,
         *,
         timeout: float = 300.0,
         poll_interval: float = 5.0,
-        server: Optional[str] = None,
+        server: str | None = None,
     ) -> PipelineStatusList:
         if poll_interval <= 0:
             raise ValueError("poll_interval must be greater than 0")
@@ -160,9 +155,7 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
                     if s.server == server:
                         relevant_statuses.append(s)
                 else:
-                    if s.steps:
-                        relevant_statuses.append(s)
-                    elif s.state != PipelineState.WAITING:
+                    if s.steps or s.state != PipelineState.WAITING:
                         relevant_statuses.append(s)
 
             if not relevant_statuses:

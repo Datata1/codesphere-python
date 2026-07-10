@@ -1,15 +1,12 @@
-from typing import List
-
 from pydantic import Field
 
+from ...core import AsyncCallable, ResourceBase
+from ...core.base import ResourceList
 from .operations import (
     _CREATE_TEAM_OP,
     _GET_TEAM_OP,
     _LIST_TEAMS_OP,
 )
-
-from ...core.base import ResourceList
-from ...core import AsyncCallable, ResourceBase
 from .schemas import Team, TeamCreate
 
 
@@ -18,7 +15,7 @@ class TeamsResource(ResourceBase):
         default=_LIST_TEAMS_OP, exclude=True
     )
 
-    async def list(self) -> List[Team]:
+    async def list(self) -> list[Team]:
         result = await self.list_team_op()
         return result.root
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import datetime
 from functools import partial
-from typing import AsyncIterator, Union
 
 from pydantic import Field
 
@@ -57,8 +57,8 @@ class TeamUsageManager(_APIOperationExecutor):
 
     async def get_landscape_summary(
         self,
-        begin_date: Union[datetime, str],
-        end_date: Union[datetime, str],
+        begin_date: datetime | str,
+        end_date: datetime | str,
         limit: int = 25,
         offset: int = 0,
     ) -> UsageSummaryResponse:
@@ -83,8 +83,8 @@ class TeamUsageManager(_APIOperationExecutor):
 
     async def iter_all_landscape_summary(
         self,
-        begin_date: Union[datetime, str],
-        end_date: Union[datetime, str],
+        begin_date: datetime | str,
+        end_date: datetime | str,
         page_size: int = 100,
     ) -> AsyncIterator[LandscapeServiceSummary]:
         offset = 0
@@ -113,8 +113,8 @@ class TeamUsageManager(_APIOperationExecutor):
     async def get_landscape_events(
         self,
         resource_id: str,
-        begin_date: Union[datetime, str],
-        end_date: Union[datetime, str],
+        begin_date: datetime | str,
+        end_date: datetime | str,
         limit: int = 25,
         offset: int = 0,
     ) -> UsageEventsResponse:
@@ -143,8 +143,8 @@ class TeamUsageManager(_APIOperationExecutor):
     async def iter_all_landscape_events(
         self,
         resource_id: str,
-        begin_date: Union[datetime, str],
-        end_date: Union[datetime, str],
+        begin_date: datetime | str,
+        end_date: datetime | str,
         page_size: int = 100,
     ) -> AsyncIterator[LandscapeServiceEvent]:
         offset = 0

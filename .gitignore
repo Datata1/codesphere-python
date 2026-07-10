@@ -21,3 +21,7 @@ env/
 .pytest_cache
 
 __marimo__
+# Coverage artifacts
+.coverage
+coverage.xml
+test-results/

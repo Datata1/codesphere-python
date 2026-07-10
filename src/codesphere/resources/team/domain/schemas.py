@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, TypeAlias
-
 from pydantic import Field, RootModel
 
 from ....core.base import CamelModel
 
-RoutingMap: TypeAlias = Dict[str, List[int]]
+type RoutingMap = dict[str, list[int]]
 
 
 class CertificateRequestStatus(CamelModel):
     issued: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class DNSEntries(CamelModel):
@@ -22,20 +20,20 @@ class DNSEntries(CamelModel):
 
 class DomainVerificationStatus(CamelModel):
     verified: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class CustomDomainConfig(CamelModel):
-    restricted: Optional[bool] = None
-    max_body_size_mb: Optional[int] = None
-    max_connection_timeout_s: Optional[int] = None
-    use_regex: Optional[bool] = None
+    restricted: bool | None = None
+    max_body_size_mb: int | None = None
+    max_connection_timeout_s: int | None = None
+    use_regex: bool | None = None
 
 
 class DomainRouting(RootModel):
     root: RoutingMap = Field(default_factory=dict)
 
-    def add(self, path: str, workspace_ids: List[int]) -> DomainRouting:
+    def add(self, path: str, workspace_ids: list[int]) -> DomainRouting:
         self.root[path] = workspace_ids
         return self
 
@@ -48,5 +46,5 @@ class DomainBase(CamelModel):
     certificate_request_status: CertificateRequestStatus
     dns_entries: DNSEntries
     domain_verification_status: DomainVerificationStatus
-    custom_config_revision: Optional[int] = None
-    custom_config: Optional[CustomDomainConfig] = None
+    custom_config_revision: int | None = None
+    custom_config: CustomDomainConfig | None = None

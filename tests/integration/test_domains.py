@@ -1,9 +1,9 @@
-import pytest
 import time
+
+import pytest
 
 from codesphere import CodesphereSDK
 from codesphere.resources.team.domain.resources import Domain
-
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 

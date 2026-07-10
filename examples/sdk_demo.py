@@ -14,6 +14,7 @@ app = marimo.App(width="medium")
 with app.setup:
     """Import dependencies and initialize the SDK."""
     import os
+
     from codesphere import CodesphereSDK
 
     # Display token status

@@ -1,6 +1,6 @@
-from .schemas import Team, TeamCreate
 from ...core.base import ResourceList
 from ...core.operations import APIOperation
+from .schemas import Team, TeamCreate
 
 _LIST_TEAMS_OP = APIOperation(
     method="GET",

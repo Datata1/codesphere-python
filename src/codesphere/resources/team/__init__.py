@@ -18,20 +18,20 @@ from .usage import (
 )
 
 __all__ = [
-    "Team",
-    "TeamCreate",
-    "TeamBase",
-    "TeamsResource",
-    "Domain",
     "CustomDomainConfig",
-    "DomainVerificationStatus",
+    "Domain",
     "DomainBase",
     "DomainRouting",
-    "TeamUsageManager",
+    "DomainVerificationStatus",
     "LandscapeServiceEvent",
     "LandscapeServiceSummary",
     "PaginatedResponse",
     "ServiceAction",
+    "Team",
+    "TeamBase",
+    "TeamCreate",
+    "TeamUsageManager",
+    "TeamsResource",
     "UsageEventsResponse",
     "UsageSummaryResponse",
 ]

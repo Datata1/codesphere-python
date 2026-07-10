@@ -1,6 +1,6 @@
-from .schemas import EnvVar
 from ....core.base import ResourceList
 from ....core.operations import APIOperation
+from .schemas import EnvVar
 
 _GET_OP = APIOperation(
     method="GET",

@@ -1,10 +1,9 @@
-import pytest
-from typing import Optional, List
 from unittest.mock import MagicMock
 
+import pytest
 from pydantic import BaseModel, Field, PrivateAttr, RootModel
 
-from codesphere.core.handler import _APIOperationExecutor, APIRequestHandler
+from codesphere.core.handler import APIRequestHandler, _APIOperationExecutor
 from codesphere.core.operations import APIOperation, AsyncCallable
 
 
@@ -20,7 +19,7 @@ class SampleInputModel(BaseModel):
 
 class ConcreteExecutor(_APIOperationExecutor, BaseModel):
     id: int = 100
-    _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+    _http_client: MagicMock | None = PrivateAttr(default=None)
 
 
 class TestAPIOperationExecutor:
@@ -33,7 +32,7 @@ class TestAPIOperationExecutor:
     def test_getattribute_returns_partial_for_operation(self):
         class ExecutorWithOp(_APIOperationExecutor, BaseModel):
             id: int = 123
-            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+            _http_client: MagicMock | None = PrivateAttr(default=None)
             test_op: AsyncCallable[SampleResponseModel] = Field(
                 default=APIOperation(
                     method="GET",
@@ -51,7 +50,7 @@ class TestAPIOperationExecutor:
         class SampleExecutor(_APIOperationExecutor, BaseModel):
             id: int = 456
             name: str = "test"
-            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+            _http_client: MagicMock | None = PrivateAttr(default=None)
 
         executor = SampleExecutor()
         assert executor.id == 456
@@ -142,7 +141,7 @@ class TestAPIRequestHandler:
 
         class ModelWithClient(BaseModel):
             id: int
-            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+            _http_client: MagicMock | None = PrivateAttr(default=None)
 
         instance = ModelWithClient(id=1)
         handler._inject_client_into_model(instance)
@@ -152,7 +151,7 @@ class TestAPIRequestHandler:
     async def test_inject_client_into_root_model_items(
         self, mock_executor, sample_operation
     ):
-        """RootModel containers should have _http_client injected into each item in .root"""
+        """RootModel items in .root should have _http_client injected."""
         mock_client = MagicMock()
         mock_client.request = MagicMock()
         mock_executor._http_client = mock_client
@@ -165,10 +164,10 @@ class TestAPIRequestHandler:
 
         class ItemWithClient(BaseModel):
             id: int
-            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+            _http_client: MagicMock | None = PrivateAttr(default=None)
 
-        class ResourceList(RootModel[List[ItemWithClient]]):
-            _http_client: Optional[MagicMock] = PrivateAttr(default=None)
+        class ResourceList(RootModel[list[ItemWithClient]]):
+            _http_client: MagicMock | None = PrivateAttr(default=None)
 
         item1 = ItemWithClient(id=1)
         item2 = ItemWithClient(id=2)

@@ -1,7 +1,6 @@
 import pytest
 
-from codesphere.resources.metadata import Datacenter, WsPlan, Image
-
+from codesphere.resources.metadata import Datacenter, Image, WsPlan
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 

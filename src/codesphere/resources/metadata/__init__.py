@@ -1,6 +1,6 @@
 """Metadata Resource & Models"""
 
-from .schemas import Datacenter, Characteristic, WsPlan, Image
 from .resources import MetadataResource
+from .schemas import Characteristic, Datacenter, Image, WsPlan
 
-__all__ = ["Datacenter", "Characteristic", "WsPlan", "Image", "MetadataResource"]
+__all__ = ["Characteristic", "Datacenter", "Image", "MetadataResource", "WsPlan"]

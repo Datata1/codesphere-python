@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+
+from pydantic import ConfigDict
 
 from ....core.base import CamelModel
 
@@ -13,11 +14,11 @@ class LogStage(str, Enum):
 
 
 class LogEntry(CamelModel):
-    model_config = {"extra": "allow"}
+    model_config = ConfigDict(extra="allow")
 
-    timestamp: Optional[str] = None
-    kind: Optional[str] = None  # "I" for info, "E" for error
-    data: Optional[str] = None  # The actual log content
+    timestamp: str | None = None
+    kind: str | None = None  # "I" for info, "E" for error
+    data: str | None = None  # The actual log content
 
     def get_text(self) -> str:
         return self.data or ""
@@ -26,4 +27,4 @@ class LogEntry(CamelModel):
 class LogProblem(CamelModel):
     status: int
     reason: str
-    detail: Optional[str] = None
+    detail: str | None = None

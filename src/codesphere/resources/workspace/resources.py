@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import Field
 
 from ...core import ResourceBase
@@ -19,7 +17,7 @@ class WorkspacesResource(ResourceBase):
         default=_LIST_BY_TEAM_OP, exclude=True
     )
 
-    async def list(self, team_id: int) -> List[Workspace]:
+    async def list(self, team_id: int) -> list[Workspace]:
         if team_id <= 0:
             raise ValidationError("team_id must be a positive integer")
         result = await self.list_by_team_op(team_id=team_id)

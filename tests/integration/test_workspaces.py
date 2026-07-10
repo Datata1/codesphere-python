@@ -1,14 +1,12 @@
 import pytest
-from typing import List
 
 from codesphere import CodesphereSDK
 from codesphere.resources.workspace import (
-    Workspace,
-    WorkspaceUpdate,
-    WorkspaceStatus,
     CommandOutput,
+    Workspace,
+    WorkspaceStatus,
+    WorkspaceUpdate,
 )
-
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -20,7 +18,7 @@ class TestWorkspacesIntegration:
         self,
         sdk_client: CodesphereSDK,
         test_team_id: int,
-        test_workspaces: List[Workspace],
+        test_workspaces: list[Workspace],
     ):
         """Should retrieve a list of workspaces for a team."""
         workspaces = await sdk_client.workspaces.list(team_id=test_team_id)
@@ -121,7 +119,7 @@ class TestWorkspaceUpdateOperations:
     async def test_update_workspace_name(
         self,
         sdk_client: CodesphereSDK,
-        test_workspaces: List[Workspace],
+        test_workspaces: list[Workspace],
     ):
         """Should update an existing workspace's name."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspaces[1].id)
@@ -143,7 +141,7 @@ class TestWorkspaceUpdateOperations:
     async def test_update_workspace_replicas(
         self,
         sdk_client: CodesphereSDK,
-        test_workspaces: List[Workspace],
+        test_workspaces: list[Workspace],
     ):
         """Should update workspace replica count."""
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspaces[1].id)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator, Optional, Type, Union
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -27,14 +27,14 @@ class LogStream:
         self,
         client: httpx.AsyncClient,
         endpoint: str,
-        entry_model: Type[LogEntry],
-        timeout: Optional[float] = None,
+        entry_model: type[LogEntry],
+        timeout: float | None = None,
     ):
         self._client = client
         self._endpoint = endpoint
         self._entry_model = entry_model
         self._timeout = timeout
-        self._response: Optional[httpx.Response] = None
+        self._response: httpx.Response | None = None
         self._stream_context = None
 
     async def __aenter__(self) -> LogStream:
@@ -73,7 +73,7 @@ class LogStream:
                 yield entry
 
     async def _parse_sse_stream(self) -> AsyncIterator[LogEntry]:
-        event_type: Optional[str] = None
+        event_type: str | None = None
         data_buffer: list[str] = []
 
         async for line in self._response.aiter_lines():
@@ -103,9 +103,8 @@ class LogStream:
                 event_type = line[6:].strip()
             elif line.startswith("data:"):
                 data_buffer.append(line[5:].strip())
-            elif not line.startswith(":"):
-                if event_type:
-                    data_buffer.append(line)
+            elif not line.startswith(":") and event_type:
+                data_buffer.append(line)
 
     def _parse_data(self, data_str: str) -> list[LogEntry]:
         entries = []
@@ -138,8 +137,8 @@ class LogStream:
                     status_code=problem.status,
                     response_body=problem_data,
                 )
-        except json.JSONDecodeError:
-            raise APIError(message=f"Invalid problem event: {data_str}")
+        except json.JSONDecodeError as e:
+            raise APIError(message=f"Invalid problem event: {data_str}") from e
 
 
 class WorkspaceLogManager:
@@ -156,7 +155,7 @@ class WorkspaceLogManager:
     def _open_stream(
         self,
         operation: StreamOperation,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         **kwargs,
     ) -> LogStream:
         endpoint = self._build_endpoint(operation, **kwargs)
@@ -169,9 +168,9 @@ class WorkspaceLogManager:
 
     def open_stream(
         self,
-        stage: Union[LogStage, str],
+        stage: LogStage | str,
         step: int,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> LogStream:
         """Open a log stream as an async context manager."""
         if isinstance(stage, LogStage):
@@ -184,7 +183,7 @@ class WorkspaceLogManager:
         self,
         step: int,
         server: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> LogStream:
         """Open a server log stream as an async context manager."""
         return self._open_stream(
@@ -195,7 +194,7 @@ class WorkspaceLogManager:
         self,
         step: int,
         replica: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> LogStream:
         """Open a replica log stream as an async context manager."""
         return self._open_stream(
@@ -204,9 +203,9 @@ class WorkspaceLogManager:
 
     async def stream(
         self,
-        stage: Union[LogStage, str],
+        stage: LogStage | str,
         step: int,
-        timeout: Optional[float] = 30.0,
+        timeout: float | None = 30.0,
     ) -> AsyncIterator[LogEntry]:
         """Stream logs for a given stage and step."""
         async with self.open_stream(stage, step, timeout) as stream:
@@ -217,7 +216,7 @@ class WorkspaceLogManager:
         self,
         step: int,
         server: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> AsyncIterator[LogEntry]:
         """Stream run logs for a specific server."""
         async with self.open_server_stream(step, server, timeout) as stream:
@@ -228,7 +227,7 @@ class WorkspaceLogManager:
         self,
         step: int,
         replica: str,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> AsyncIterator[LogEntry]:
         """Stream run logs for a specific replica."""
         async with self.open_replica_stream(step, replica, timeout) as stream:
@@ -237,10 +236,10 @@ class WorkspaceLogManager:
 
     async def collect(
         self,
-        stage: Union[LogStage, str],
+        stage: LogStage | str,
         step: int,
-        max_entries: Optional[int] = None,
-        timeout: Optional[float] = 30.0,
+        max_entries: int | None = None,
+        timeout: float | None = 30.0,
     ) -> list[LogEntry]:
         """Collect all logs for a stage and step into a list."""
         entries: list[LogEntry] = []
@@ -250,7 +249,7 @@ class WorkspaceLogManager:
                     entries.append(entry)
                     if max_entries and len(entries) >= max_entries:
                         break
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         return entries
 
@@ -258,8 +257,8 @@ class WorkspaceLogManager:
         self,
         step: int,
         server: str,
-        max_entries: Optional[int] = None,
-        timeout: Optional[float] = 30.0,
+        max_entries: int | None = None,
+        timeout: float | None = 30.0,
     ) -> list[LogEntry]:
         """Collect all logs for a server into a list."""
         entries: list[LogEntry] = []
@@ -269,7 +268,7 @@ class WorkspaceLogManager:
                     entries.append(entry)
                     if max_entries and len(entries) >= max_entries:
                         break
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         return entries
 
@@ -277,8 +276,8 @@ class WorkspaceLogManager:
         self,
         step: int,
         replica: str,
-        max_entries: Optional[int] = None,
-        timeout: Optional[float] = 30.0,
+        max_entries: int | None = None,
+        timeout: float | None = 30.0,
     ) -> list[LogEntry]:
         """Collect all logs for a replica into a list."""
         entries: list[LogEntry] = []
@@ -288,6 +287,6 @@ class WorkspaceLogManager:
                     entries.append(entry)
                     if max_entries and len(entries) >= max_entries:
                         break
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         return entries

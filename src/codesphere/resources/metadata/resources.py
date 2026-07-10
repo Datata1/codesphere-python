@@ -1,10 +1,9 @@
-from typing import List
 from pydantic import Field
+
+from ...core import AsyncCallable, ResourceBase
 from ...core.base import ResourceList
-from ...core import AsyncCallable
-from ...core import ResourceBase
 from .operations import _LIST_DC_OP, _LIST_IMAGES_OP, _LIST_PLANS_OP
-from .schemas import Datacenter, WsPlan, Image
+from .schemas import Datacenter, Image, WsPlan
 
 
 class MetadataResource(ResourceBase):
@@ -18,14 +17,14 @@ class MetadataResource(ResourceBase):
         default=_LIST_IMAGES_OP, exclude=True
     )
 
-    async def list_datacenters(self) -> List[Datacenter]:
+    async def list_datacenters(self) -> list[Datacenter]:
         result = await self.list_datacenters_op()
         return result.root
 
-    async def list_plans(self) -> List[WsPlan]:
+    async def list_plans(self) -> list[WsPlan]:
         result = await self.list_plans_op()
         return result.root
 
-    async def list_images(self) -> List[Image]:
+    async def list_images(self) -> list[Image]:
         result = await self.list_images_op()
         return result.root

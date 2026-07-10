@@ -1,6 +1,7 @@
-import pytest
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
+
+import pytest
 
 from codesphere.resources.workspace.envVars import EnvVar, WorkspaceEnvVarManager
 
@@ -11,8 +12,8 @@ class EnvVarOperationTestCase:
 
     name: str
     operation: str
-    input_data: Optional[Any] = None
-    mock_response: Optional[Any] = None
+    input_data: Any | None = None
+    mock_response: Any | None = None
 
 
 class TestWorkspaceEnvVarManager:
@@ -30,7 +31,7 @@ class TestWorkspaceEnvVarManager:
         """Get should return a list of EnvVar models."""
         manager, mock_client = env_var_manager
 
-        result = await manager.get()
+        await manager.get()
 
         mock_client.request.assert_awaited_once()
 

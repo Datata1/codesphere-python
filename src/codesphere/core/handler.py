@@ -1,6 +1,6 @@
-from functools import partial
 import logging
-from typing import Any, List, Optional, Type, get_args, get_origin
+from functools import partial
+from typing import Any, get_args, get_origin
 
 import httpx
 from pydantic import BaseModel, PrivateAttr, RootModel, ValidationError
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class _APIOperationExecutor:
-    _http_client: Optional[APIHttpClient] = PrivateAttr(default=None)
+    _http_client: APIHttpClient | None = PrivateAttr(default=None)
 
     def __getattribute__(self, name: str) -> Any:
         attr = super().__getattribute__(name)
@@ -106,7 +106,7 @@ class APIRequestHandler:
     async def _parse_and_validate_response(
         self,
         response: httpx.Response,
-        response_model: Type[BaseModel] | Type[List[BaseModel]] | None,
+        response_model: type[BaseModel] | type[list[BaseModel]] | None,
         endpoint_for_logging: str,
     ) -> Any:
         if response_model in (None, type(None)):
@@ -121,7 +121,7 @@ class APIRequestHandler:
 
         try:
             origin = get_origin(response_model)
-            if origin is list or origin is List:
+            if origin is list or origin is list:
                 item_model = get_args(response_model)[0]
                 instances = [item_model.model_validate(item) for item in json_response]
                 for instance in instances:

@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-integration test-unit bump release pypi tree version changelog
+.PHONY: help install lint format typecheck test test-integration test-unit bump release pypi tree version changelog
 
 .DEFAULT_GOAL := help
 
@@ -26,6 +26,10 @@ lint: ## Checks code quality with ruff
 format: ## Formats code with ruff
 	@echo ">>> Formatting code with ruff..."
 	uv run ruff format src
+
+typecheck: ## Checks types with ty
+	@echo ">>> Checking types with ty..."
+	uv run ty check
 
 test: ## Runs all tests with pytest
 	@echo ">>> Running all tests with pytest..."

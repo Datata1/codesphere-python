@@ -45,9 +45,7 @@ class TestLandscapeProfilesIntegration:
         workspace = await sdk_client.workspaces.get(workspace_id=test_workspace.id)
 
         profile_name = "sdk-test-profile"
-        create_result = await workspace.execute_command(
-            f"echo 'version: 1' > ci.{profile_name}.yml"
-        )
+        await workspace.execute_command(f"echo 'version: 1' > ci.{profile_name}.yml")
 
         try:
             profiles = await workspace.landscape.list_profiles()
