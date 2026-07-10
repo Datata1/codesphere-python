@@ -1,6 +1,7 @@
-import pytest
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
 class ResourceTestHelper:
@@ -107,7 +108,7 @@ def metadata_resource_factory(mock_http_client_for_resource):
 def team_model_factory(mock_http_client_for_resource, sample_team_data):
     """Factory for creating Team model instances with mock HTTP client."""
 
-    def _create(response_data: Any = None, team_data: Dict = None):
+    def _create(response_data: Any = None, team_data: dict | None = None):
         from codesphere.resources.team import Team
 
         data = team_data or sample_team_data
@@ -123,7 +124,7 @@ def team_model_factory(mock_http_client_for_resource, sample_team_data):
 def workspace_model_factory(mock_http_client_for_resource, sample_workspace_data):
     """Factory for creating Workspace model instances with mock HTTP client."""
 
-    def _create(response_data: Any = None, workspace_data: Dict = None):
+    def _create(response_data: Any = None, workspace_data: dict | None = None):
         from codesphere.resources.workspace import Workspace
 
         data = workspace_data or sample_workspace_data
@@ -139,7 +140,7 @@ def workspace_model_factory(mock_http_client_for_resource, sample_workspace_data
 def domain_model_factory(mock_http_client_for_resource, sample_domain_data):
     """Factory for creating Domain model instances with mock HTTP client."""
 
-    def _create(response_data: Any = None, domain_data: Dict = None):
+    def _create(response_data: Any = None, domain_data: dict | None = None):
         from codesphere.resources.team.domain.resources import Domain
 
         data = domain_data or sample_domain_data

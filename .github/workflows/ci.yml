@@ -7,12 +7,41 @@ on:
       - 'src/codesphere/**'
       - '.github/workflows/ci.yml'
       - 'tests/**'
+      - 'pyproject.toml'
+      - 'ruff.toml'
+      - 'uv.lock'
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
+  typecheck:
+    name: Type Check (ty)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv package manager
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+        shell: bash
+
+      - name: Run ty type check
+        run: uv run ty check
+        shell: bash
+
+      - name: Minimize uv cache
+        run: uv cache prune --ci
+
   security_check:
     name: Security Check (Bandit)
     runs-on: ubuntu-latest
@@ -123,7 +152,7 @@ jobs:
 
       - name: Run tests with pytest
         run: |
-          uv run pytest --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html --cov=. --ignore=tests/integration | tee pytest-coverage.txt 
+          uv run pytest --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html --cov --ignore=tests/integration | tee pytest-coverage.txt
         shell: bash
 
       - name: Pytest coverage comment

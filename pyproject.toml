@@ -8,18 +8,13 @@ license = { file="LICENSE" }
 authors = [
     { name = "Datata1", email = "jan-david.wiederstein@codesphere.com" }
 ]
-requires-python = ">=3.12.9"
+requires-python = ">=3.12"
 dependencies = [
-    "aiohttp>=3.12.13",
-    "aiohttp-retry>=2.9.1",
     "httpx>=0.28.1",
     "pydantic>=2.11.7",
     "pydantic-settings>=2.11.0",
-    "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.2",
-    "typing-extensions>=4.14.0",
-    "urllib3>=2.4.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -45,6 +40,7 @@ dev = [
     "pytest-cov>=6.2.1",
     "ruff>=0.11.13",
     "bandit>=1.7.0",
+    "ty==0.0.58",
 ]
 
 [tool.pytest.ini_options]
@@ -61,18 +57,10 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["api", "handler", "tasks"]
+source = ["src/codesphere"]
 branch = true
 omit = [
-    ".github/*",
-    ".ruff_cache/*",
-    "docs/*",
-    "examples/**",
-    "scripts/**",
     "*/__main__.py",
-    "tests/*",
-    ".venv/*",
-    "__init__.py"
 ]
 
 [tool.coverage.report]
@@ -94,6 +82,23 @@ directory = "test-results"
 targets = ["src/codesphere"]
 exclude_dirs = ["tests", ".venv", ".uv", "examples", "docs", ".github", "scripts"]
 skips = ["B101"]
+
+[tool.ty.src]
+exclude = [
+    # --- Type-check ratchet -------------------------------------------------
+    # Each exclusion below is temporary and owned by a refactor ticket in
+    # plans/refactor/. When a ticket lands, its paths MUST be removed here.
+    # Do not add new exclusions without a ticket reference.
+    "src/codesphere/core/",           # ticket 02 (typed operation dispatch)
+    "src/codesphere/resources/",      # tickets 02 + 04 (dispatch, normalization)
+    "src/codesphere/http_client.py",  # ticket 03 (client config & lifecycle)
+    "src/codesphere/config.py",       # ticket 03 (client config & lifecycle)
+    "tests/",                         # ticket 06 (respx-based test suite)
+    # --- Permanent exclusions -----------------------------------------------
+    # Examples have their own dependencies (e.g. fastapi) not installed in
+    # this project's environment.
+    "examples/",
+]
 
 [project.urls]
 Homepage = "https://codesphere.com/"

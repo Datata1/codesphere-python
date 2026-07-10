@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ class APIHttpClient:
     def __init__(self, base_url: str = "https://codesphere.com/api"):
         self._token = settings.token.get_secret_value()
         self._base_url = base_url or str(settings.base_url)
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
         self._timeout_config = httpx.Timeout(
             settings.client_timeout_connect, read=settings.client_timeout_read
@@ -68,7 +68,8 @@ class APIHttpClient:
         try:
             response = await client.request(method, endpoint, **kwargs)
             log.debug(
-                f"Response: {response.status_code} {response.reason_phrase} for {method} {endpoint}"
+                f"Response: {response.status_code} {response.reason_phrase} "
+                f"for {method} {endpoint}"
             )
 
             raise_for_status(response)

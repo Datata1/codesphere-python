@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -11,7 +11,7 @@ class MockResponseFactory:
     @staticmethod
     def create(
         status_code: int = 200,
-        json_data: Optional[Any] = None,
+        json_data: Any | None = None,
         raise_for_status: bool = False,
     ) -> AsyncMock:
         """Create a mock httpx.Response."""
@@ -46,9 +46,9 @@ class MockHTTPClientFactory:
 
     @staticmethod
     def create(
-        response: Optional[AsyncMock] = None,
+        response: AsyncMock | None = None,
         status_code: int = 200,
-        json_data: Optional[Any] = None,
+        json_data: Any | None = None,
     ) -> AsyncMock:
         """Create a mock httpx.AsyncClient."""
         mock_client = AsyncMock(spec=httpx.AsyncClient)
@@ -256,7 +256,7 @@ def metadata_resource_factory(mock_http_client_for_resource):
 
 @pytest.fixture
 def team_model_factory(mock_http_client_for_resource, sample_team_data):
-    def _create(response_data: Any = None, team_data: dict = None):
+    def _create(response_data: Any = None, team_data: dict | None = None):
         from codesphere.resources.team import Team
 
         data = team_data or sample_team_data
@@ -272,7 +272,7 @@ def team_model_factory(mock_http_client_for_resource, sample_team_data):
 
 @pytest.fixture
 def workspace_model_factory(mock_http_client_for_resource, sample_workspace_data):
-    def _create(response_data: Any = None, workspace_data: dict = None):
+    def _create(response_data: Any = None, workspace_data: dict | None = None):
         from codesphere.resources.workspace import Workspace
 
         data = workspace_data or sample_workspace_data
@@ -288,7 +288,7 @@ def workspace_model_factory(mock_http_client_for_resource, sample_workspace_data
 
 @pytest.fixture
 def domain_model_factory(mock_http_client_for_resource, sample_domain_data):
-    def _create(response_data: Any = None, domain_data: dict = None):
+    def _create(response_data: Any = None, domain_data: dict | None = None):
         from codesphere.resources.team.domain.resources import Domain
 
         data = domain_data or sample_domain_data

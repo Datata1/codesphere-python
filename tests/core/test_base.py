@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -327,7 +327,7 @@ class TestResourceListExport:
             item_id: int
             created_at: datetime
 
-        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=timezone.utc)
+        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=UTC)
         items = [Item(item_id=1, created_at=dt)]
         resource_list = ResourceList[Item](root=items)
         result = resource_list.to_json()
@@ -342,7 +342,7 @@ class TestResourceListExport:
             item_id: int
             created_at: datetime
 
-        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=timezone.utc)
+        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=UTC)
         items = [Item(item_id=1, created_at=dt)]
         resource_list = ResourceList[Item](root=items)
         result = resource_list.to_list(mode="json")
@@ -356,7 +356,7 @@ class TestResourceListExport:
             item_id: int
             created_at: datetime
 
-        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=timezone.utc)
+        dt = datetime(2026, 2, 7, 12, 30, 45, tzinfo=UTC)
         items = [Item(item_id=1, created_at=dt)]
         resource_list = ResourceList[Item](root=items)
         result = resource_list.to_list()

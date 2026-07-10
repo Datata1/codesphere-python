@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from typing import Optional, Type
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from codesphere.core.operations import APIOperation, StreamOperation
 from codesphere.resources.workspace.logs import LogEntry
@@ -29,8 +28,8 @@ class APIOperationTestCase:
     name: str
     method: str
     endpoint_template: str
-    response_model: Type
-    input_model: Optional[Type] = None
+    response_model: type
+    input_model: type | None = None
 
 
 api_operation_test_cases = [
@@ -139,11 +138,8 @@ class TestAPIOperation:
             endpoint_template="/test",
             response_model=LogEntry,
         )
-        try:
+        with pytest.raises(ValidationError):
             op.method = "POST"
-            assert False, "Should raise error"
-        except Exception:
-            pass
 
 
 class TestStreamOperation:
@@ -160,8 +156,5 @@ class TestStreamOperation:
             endpoint_template="/logs/{id}",
             entry_model=LogEntry,
         )
-        try:
+        with pytest.raises(ValidationError):
             op.endpoint_template = "/other"
-            assert False, "Should raise error"
-        except Exception:
-            pass

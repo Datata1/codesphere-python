@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Generic, List, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import Field
 
@@ -43,8 +43,8 @@ ItemT = TypeVar("ItemT")
 
 class PaginatedResponse(CamelModel, Generic[ItemT]):
     total_items: int
-    limit: Optional[int] = Field(default=25)
-    offset: Optional[int] = Field(default=0)
+    limit: int | None = Field(default=25)
+    offset: int | None = Field(default=0)
     begin_date: datetime
     end_date: datetime
 
@@ -75,12 +75,12 @@ class PaginatedResponse(CamelModel, Generic[ItemT]):
 class UsageSummaryResponse(
     PaginatedResponse[LandscapeServiceSummary], _APIOperationExecutor
 ):
-    summary: List[LandscapeServiceSummary] = Field(default_factory=list)
-    _refresh_op: Optional[AsyncCallable[UsageSummaryResponse]] = None
-    _team_id: Optional[int] = None
+    summary: list[LandscapeServiceSummary] = Field(default_factory=list)
+    _refresh_op: AsyncCallable[UsageSummaryResponse] | None = None
+    _team_id: int | None = None
 
     @property
-    def items(self) -> List[LandscapeServiceSummary]:
+    def items(self) -> list[LandscapeServiceSummary]:
         return self.summary
 
     async def refresh(self) -> UsageSummaryResponse:
@@ -105,14 +105,14 @@ class UsageSummaryResponse(
 class UsageEventsResponse(
     PaginatedResponse[LandscapeServiceEvent], _APIOperationExecutor
 ):
-    events: List[LandscapeServiceEvent] = Field(default_factory=list)
+    events: list[LandscapeServiceEvent] = Field(default_factory=list)
 
-    _refresh_op: Optional[AsyncCallable[UsageEventsResponse]] = None
-    _team_id: Optional[int] = None
-    _resource_id: Optional[str] = None
+    _refresh_op: AsyncCallable[UsageEventsResponse] | None = None
+    _team_id: int | None = None
+    _resource_id: str | None = None
 
     @property
-    def items(self) -> List[LandscapeServiceEvent]:
+    def items(self) -> list[LandscapeServiceEvent]:
         return self.events
 
     async def refresh(self) -> UsageEventsResponse:

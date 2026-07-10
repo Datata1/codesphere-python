@@ -4,27 +4,16 @@ indent-width = 4
 
 target-version = "py312"
 
-[lint]
-select = ["F", "E4", "E7", "E9"]
-ignore = ["E721", "F841"]
-
-
 exclude = [
     ".git",
     ".venv",
     "build",
     "dist",
-    "src/codesphere_sdk/api",
-    "src/codesphere_sdk/models",
-    "src/codesphere_sdk/api_client.py",
-    "src/codesphere_sdk/api_response.py",
-    "src/codesphere_sdk/configuration.py",
-    "src/codesphere_sdk/exceptions.py",
-    "src/codesphere_sdk/rest.py",
-    "src/codesphere_sdk/docs",
-    "src/codesphere_sdk/test"
 ]
 
+[lint]
+select = ["F", "E", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -33,6 +22,9 @@ unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+[lint.per-file-ignores]
+# marimo notebook: a bare trailing expression is how a cell renders its widget
+"examples/sdk_demo.py" = ["B018"]
 
 [format]
 # Like Black, use double quotes for strings.

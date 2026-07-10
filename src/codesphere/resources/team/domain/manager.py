@@ -1,5 +1,3 @@
-from typing import List, Union
-
 from pydantic import Field
 
 from ....core.base import ResourceList
@@ -21,7 +19,7 @@ class TeamDomainManager(_APIOperationExecutor):
         exclude=True,
     )
 
-    async def list(self) -> List[Domain]:
+    async def list(self) -> list[Domain]:
         result = await self.list_op()
         return result.root
 
@@ -55,7 +53,7 @@ class TeamDomainManager(_APIOperationExecutor):
     )
 
     async def update_workspace_connections(
-        self, name: str, connections: Union[DomainRouting, RoutingMap]
+        self, name: str, connections: DomainRouting | RoutingMap
     ) -> Domain:
         payload = (
             connections.root if isinstance(connections, DomainRouting) else connections

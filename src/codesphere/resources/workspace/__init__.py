@@ -11,18 +11,18 @@ from .schemas import (
 )
 
 __all__ = [
-    "Workspace",
-    "WorkspaceCreate",
-    "WorkspaceUpdate",
-    "WorkspaceStatus",
-    "WorkspacesResource",
     "CommandInput",
     "CommandOutput",
-    "WorkspaceGitManager",
     "GitHead",
-    "LogStream",
-    "WorkspaceLogManager",
     "LogEntry",
     "LogProblem",
     "LogStage",
+    "LogStream",
+    "Workspace",
+    "WorkspaceCreate",
+    "WorkspaceGitManager",
+    "WorkspaceLogManager",
+    "WorkspaceStatus",
+    "WorkspaceUpdate",
+    "WorkspacesResource",
 ]

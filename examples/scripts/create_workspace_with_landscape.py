@@ -1,6 +1,6 @@
 import asyncio
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from codesphere import CodesphereSDK
 from codesphere.resources.workspace import WorkspaceCreate
@@ -44,7 +44,8 @@ async def main():
             .add_reactive_service("web")
             .plan(plan.id)
             .add_step(
-                'for i in $(seq 1 20); do echo "[$i] Processing request..."; sleep 1; done'
+                "for i in $(seq 1 20); do "
+                'echo "[$i] Processing request..."; sleep 1; done'
             )
             .add_port(3000, public=True)
             .add_path("/", port=3000)
@@ -95,11 +96,12 @@ async def main():
 
         print("\n--- Usage History ---")
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=1)
 
         print(
-            f"Fetching usage summary from {begin_date.isoformat()} to {end_date.isoformat()}..."
+            f"Fetching usage summary from {begin_date.isoformat()} "
+            f"to {end_date.isoformat()}..."
         )
         usage_summary = await team.usage.get_landscape_summary(
             begin_date=begin_date,
@@ -135,7 +137,8 @@ async def main():
             print(f"Total events: {events.total_items}")
             for event in events.items:
                 print(
-                    f"  [{event.date.isoformat()}] {event.action.value.upper()} by {event.initiator_email}"
+                    f"  [{event.date.isoformat()}] {event.action.value.upper()} "
+                    f"by {event.initiator_email}"
                 )
 
             print("\nRefreshing usage summary...")

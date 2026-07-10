@@ -1,11 +1,11 @@
-import pytest
 from dataclasses import dataclass
-from typing import List, Type
+
+import pytest
 
 from codesphere.resources.metadata import (
     Datacenter,
-    WsPlan,
     Image,
+    WsPlan,
 )
 
 
@@ -15,9 +15,9 @@ class MetadataListTestCase:
 
     name: str
     operation: str
-    mock_response: List[dict]
+    mock_response: list[dict]
     expected_count: int
-    expected_type: Type
+    expected_type: type
 
 
 metadata_list_test_cases = [

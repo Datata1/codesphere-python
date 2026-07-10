@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -49,7 +49,7 @@ class TestGetLandscapeSummary:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=7)
 
         result = await team.usage.get_landscape_summary(
@@ -69,7 +69,7 @@ class TestGetLandscapeSummary:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=7)
 
         result = await team.usage.get_landscape_summary(
@@ -89,7 +89,7 @@ class TestGetLandscapeSummary:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=30)
 
         result = await team.usage.get_landscape_summary(
@@ -113,7 +113,7 @@ class TestGetLandscapeSummary:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=30)
 
         result = await team.usage.get_landscape_summary(
@@ -137,7 +137,7 @@ class TestGetLandscapeEvents:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=30)
 
         summary = await team.usage.get_landscape_summary(
@@ -166,7 +166,7 @@ class TestGetLandscapeEvents:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=30)
 
         summary = await team.usage.get_landscape_summary(
@@ -206,7 +206,7 @@ class TestUsageHistoryAfterDeployment:
         team = await sdk_client.teams.get(team_id=test_team_id)
         profile_name = "sdk-usage-test"
 
-        before_deploy = datetime.now(timezone.utc)
+        before_deploy = datetime.now(UTC)
 
         profile = (
             ProfileBuilder()
@@ -233,7 +233,7 @@ class TestUsageHistoryAfterDeployment:
 
             await asyncio.sleep(2)
 
-            after_teardown = datetime.now(timezone.utc)
+            after_teardown = datetime.now(UTC)
 
             summary = await team.usage.get_landscape_summary(
                 begin_date=before_deploy,
@@ -255,7 +255,7 @@ class TestIterAllMethods:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=30)
 
         items = []
@@ -280,7 +280,7 @@ class TestIterAllMethods:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=30)
 
         summary = await team.usage.get_landscape_summary(
@@ -319,15 +319,13 @@ class TestRefreshMethod:
     ):
         team = await sdk_client.teams.get(team_id=test_team_id)
 
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=7)
 
         result = await team.usage.get_landscape_summary(
             begin_date=begin_date,
             end_date=end_date,
         )
-
-        original_total = result.total_items
 
         refreshed = await result.refresh()
 

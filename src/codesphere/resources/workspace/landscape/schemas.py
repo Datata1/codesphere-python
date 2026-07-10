@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, RootModel
@@ -25,21 +25,21 @@ class PipelineState(str, Enum):
 
 class StepStatus(CamelModel):
     state: PipelineState
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 class PipelineStatus(CamelModel):
     state: PipelineState
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    steps: List[StepStatus] = Field(default_factory=list)
+    started_at: str | None = None
+    finished_at: str | None = None
+    steps: list[StepStatus] = Field(default_factory=list)
     replica: str
     server: str
 
 
-class PipelineStatusList(RootModel[List[PipelineStatus]]):
-    root: List[PipelineStatus]
+class PipelineStatusList(RootModel[list[PipelineStatus]]):
+    root: list[PipelineStatus]
 
     def __iter__(self):
         return iter(self.root)
@@ -56,7 +56,7 @@ class Profile(BaseModel):
 
 
 class Step(CamelModel):
-    name: Optional[str] = None
+    name: str | None = None
     command: str
 
 
@@ -68,43 +68,43 @@ class PortConfig(CamelModel):
 class PathConfig(CamelModel):
     port: int = Field(ge=1, le=65535)
     path: str
-    strip_path: Optional[bool] = None
+    strip_path: bool | None = None
 
 
 class NetworkConfig(CamelModel):
-    ports: List[PortConfig] = Field(default_factory=list)
-    paths: List[PathConfig] = Field(default_factory=list)
+    ports: list[PortConfig] = Field(default_factory=list)
+    paths: list[PathConfig] = Field(default_factory=list)
 
 
 class ReactiveServiceConfig(CamelModel):
-    steps: List[Step] = Field(default_factory=list)
+    steps: list[Step] = Field(default_factory=list)
     plan: int
     replicas: int = 1
-    env: Optional[Dict[str, str]] = None
-    base_image: Optional[str] = None
-    run_as_user: Optional[int] = Field(default=None, ge=0, le=65534)
-    run_as_group: Optional[int] = Field(default=None, ge=0, le=65534)
-    mount_sub_path: Optional[str] = None
-    health_endpoint: Optional[str] = None
-    network: Optional[NetworkConfig] = None
+    env: dict[str, str] | None = None
+    base_image: str | None = None
+    run_as_user: int | None = Field(default=None, ge=0, le=65534)
+    run_as_group: int | None = Field(default=None, ge=0, le=65534)
+    mount_sub_path: str | None = None
+    health_endpoint: str | None = None
+    network: NetworkConfig | None = None
 
 
 class ManagedServiceConfig(CamelModel):
     provider: str
     plan: str
-    config: Optional[Dict[str, Any]] = None
-    secrets: Optional[Dict[str, str]] = None
+    config: dict[str, Any] | None = None
+    secrets: dict[str, str] | None = None
 
 
 class StageConfig(CamelModel):
-    steps: List[Step] = Field(default_factory=list)
+    steps: list[Step] = Field(default_factory=list)
 
 
 class ProfileConfig(CamelModel):
     schema_version: Literal["v0.2"] = Field(default="v0.2", alias="schemaVersion")
     prepare: StageConfig = Field(default_factory=StageConfig)
     test: StageConfig = Field(default_factory=StageConfig)
-    run: Dict[str, ReactiveServiceConfig | ManagedServiceConfig] = Field(
+    run: dict[str, ReactiveServiceConfig | ManagedServiceConfig] = Field(
         default_factory=dict
     )
 
@@ -116,7 +116,7 @@ class ProfileConfig(CamelModel):
 
 
 class StepBuilder:
-    def __init__(self, command: str, name: Optional[str] = None):
+    def __init__(self, command: str, name: str | None = None):
         self._command = command
         self._name = name
 
@@ -141,7 +141,7 @@ class PathBuilder:
     def __init__(self, path: str, port: int):
         self._path = path
         self._port = port
-        self._strip_path: Optional[bool] = None
+        self._strip_path: bool | None = None
 
     def strip_path(self, strip: bool = True) -> PathBuilder:
         self._strip_path = strip
@@ -154,25 +154,23 @@ class PathBuilder:
 class ReactiveServiceBuilder:
     def __init__(self, name: str):
         self._name = name
-        self._steps: List[Step] = []
-        self._env: Dict[str, str] = {}
-        self._plan: Optional[int] = None
+        self._steps: list[Step] = []
+        self._env: dict[str, str] = {}
+        self._plan: int | None = None
         self._replicas: int = 1
-        self._base_image: Optional[str] = None
-        self._run_as_user: Optional[int] = None
-        self._run_as_group: Optional[int] = None
-        self._mount_sub_path: Optional[str] = None
-        self._health_endpoint: Optional[str] = None
-        self._ports: List[PortConfig] = []
-        self._paths: List[PathConfig] = []
+        self._base_image: str | None = None
+        self._run_as_user: int | None = None
+        self._run_as_group: int | None = None
+        self._mount_sub_path: str | None = None
+        self._health_endpoint: str | None = None
+        self._ports: list[PortConfig] = []
+        self._paths: list[PathConfig] = []
 
     @property
     def name(self) -> str:
         return self._name
 
-    def add_step(
-        self, command: str, name: Optional[str] = None
-    ) -> ReactiveServiceBuilder:
+    def add_step(self, command: str, name: str | None = None) -> ReactiveServiceBuilder:
         self._steps.append(Step(command=command, name=name))
         return self
 
@@ -180,7 +178,7 @@ class ReactiveServiceBuilder:
         self._env[key] = value
         return self
 
-    def envs(self, env_vars: Dict[str, str]) -> ReactiveServiceBuilder:
+    def envs(self, env_vars: dict[str, str]) -> ReactiveServiceBuilder:
         self._env.update(env_vars)
         return self
 
@@ -197,7 +195,7 @@ class ReactiveServiceBuilder:
         return self
 
     def run_as(
-        self, user: Optional[int] = None, group: Optional[int] = None
+        self, user: int | None = None, group: int | None = None
     ) -> ReactiveServiceBuilder:
         self._run_as_user = user
         self._run_as_group = group
@@ -216,7 +214,7 @@ class ReactiveServiceBuilder:
         return self
 
     def add_path(
-        self, path: str, port: int, *, strip_path: Optional[bool] = None
+        self, path: str, port: int, *, strip_path: bool | None = None
     ) -> ReactiveServiceBuilder:
         self._paths.append(PathConfig(port=port, path=path, strip_path=strip_path))
         return self
@@ -252,8 +250,8 @@ class ManagedServiceBuilder:
         self._name = name
         self._provider = provider
         self._plan = plan
-        self._config: Dict[str, Any] = {}
-        self._secrets: Dict[str, str] = {}
+        self._config: dict[str, Any] = {}
+        self._secrets: dict[str, str] = {}
 
     @property
     def name(self) -> str:
@@ -263,7 +261,7 @@ class ManagedServiceBuilder:
         self._config[key] = value
         return self
 
-    def configs(self, config: Dict[str, Any]) -> ManagedServiceBuilder:
+    def configs(self, config: dict[str, Any]) -> ManagedServiceBuilder:
         self._config.update(config)
         return self
 
@@ -271,7 +269,7 @@ class ManagedServiceBuilder:
         self._secrets[key] = value
         return self
 
-    def secrets(self, secrets: Dict[str, str]) -> ManagedServiceBuilder:
+    def secrets(self, secrets: dict[str, str]) -> ManagedServiceBuilder:
         self._secrets.update(secrets)
         return self
 
@@ -315,10 +313,10 @@ class ProfileBuilder:
     """
 
     def __init__(self) -> None:
-        self._prepare_steps: List[Step] = []
-        self._test_steps: List[Step] = []
-        self._services: Dict[str, ReactiveServiceConfig | ManagedServiceConfig] = {}
-        self._current_service: Optional[Any] = None
+        self._prepare_steps: list[Step] = []
+        self._test_steps: list[Step] = []
+        self._services: dict[str, ReactiveServiceConfig | ManagedServiceConfig] = {}
+        self._current_service: Any | None = None
 
     def prepare(self) -> PrepareStageBuilder:
         return PrepareStageBuilder(self)
@@ -371,7 +369,7 @@ class PrepareStageBuilder:
     def __init__(self, parent: ProfileBuilder):
         self._parent = parent
 
-    def add_step(self, command: str, name: Optional[str] = None) -> PrepareStageBuilder:
+    def add_step(self, command: str, name: str | None = None) -> PrepareStageBuilder:
         self._parent._prepare_steps.append(Step(command=command, name=name))
         return self
 
@@ -383,7 +381,7 @@ class TestStageBuilder:
     def __init__(self, parent: ProfileBuilder):
         self._parent = parent
 
-    def add_step(self, command: str, name: Optional[str] = None) -> TestStageBuilder:
+    def add_step(self, command: str, name: str | None = None) -> TestStageBuilder:
         self._parent._test_steps.append(Step(command=command, name=name))
         return self
 
@@ -397,7 +395,7 @@ class ReactiveServiceBuilderContext:
         self._builder = ReactiveServiceBuilder(name)
 
     def add_step(
-        self, command: str, name: Optional[str] = None
+        self, command: str, name: str | None = None
     ) -> ReactiveServiceBuilderContext:
         self._builder.add_step(command, name)
         return self
@@ -406,7 +404,7 @@ class ReactiveServiceBuilderContext:
         self._builder.env(key, value)
         return self
 
-    def envs(self, env_vars: Dict[str, str]) -> ReactiveServiceBuilderContext:
+    def envs(self, env_vars: dict[str, str]) -> ReactiveServiceBuilderContext:
         self._builder.envs(env_vars)
         return self
 
@@ -423,7 +421,7 @@ class ReactiveServiceBuilderContext:
         return self
 
     def run_as(
-        self, user: Optional[int] = None, group: Optional[int] = None
+        self, user: int | None = None, group: int | None = None
     ) -> ReactiveServiceBuilderContext:
         self._builder.run_as(user, group)
         return self
@@ -443,7 +441,7 @@ class ReactiveServiceBuilderContext:
         return self
 
     def add_path(
-        self, path: str, port: int, *, strip_path: Optional[bool] = None
+        self, path: str, port: int, *, strip_path: bool | None = None
     ) -> ReactiveServiceBuilderContext:
         self._builder.add_path(path, port, strip_path=strip_path)
         return self
@@ -463,7 +461,7 @@ class ManagedServiceBuilderContext:
         self._builder.config(key, value)
         return self
 
-    def configs(self, config: Dict[str, Any]) -> ManagedServiceBuilderContext:
+    def configs(self, config: dict[str, Any]) -> ManagedServiceBuilderContext:
         self._builder.configs(config)
         return self
 
@@ -471,7 +469,7 @@ class ManagedServiceBuilderContext:
         self._builder.secret(key, value)
         return self
 
-    def secrets(self, secrets: Dict[str, str]) -> ManagedServiceBuilderContext:
+    def secrets(self, secrets: dict[str, str]) -> ManagedServiceBuilderContext:
         self._builder.secrets(secrets)
         return self
 

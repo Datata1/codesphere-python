@@ -1,8 +1,12 @@
 from __future__ import annotations
+
 import logging
-from typing import Union
+
 from pydantic import Field
 
+from ....core.handler import _APIOperationExecutor
+from ....core.operations import AsyncCallable
+from ....utils import update_model_fields
 from .operations import (
     _DELETE_OP,
     _UPDATE_OP,
@@ -16,11 +20,6 @@ from .schemas import (
     DomainVerificationStatus,
     RoutingMap,
 )
-
-from ....core.handler import _APIOperationExecutor
-from ....core.operations import AsyncCallable
-from ....utils import update_model_fields
-
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ class Domain(DomainBase, _APIOperationExecutor):
         return response
 
     async def update_workspace_connections(
-        self, connections: Union[DomainRouting, RoutingMap]
+        self, connections: DomainRouting | RoutingMap
     ) -> Domain:
         payload = (
             connections.root if isinstance(connections, DomainRouting) else connections

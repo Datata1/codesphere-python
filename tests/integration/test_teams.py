@@ -3,7 +3,6 @@ import pytest
 from codesphere import CodesphereSDK
 from codesphere.resources.team import Team
 
-
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 

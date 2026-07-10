@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -21,11 +21,11 @@ class AuthenticationError(CodesphereError):
     HTTP Status: 401
     """
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         if message is None:
             message = (
-                "Authentication token not provided or invalid. Please pass it as an argument "
-                "or set the 'CS_TOKEN' environment variable."
+                "Authentication token not provided or invalid. Please pass it "
+                "as an argument or set the 'CS_TOKEN' environment variable."
             )
         super().__init__(message)
 
@@ -36,7 +36,7 @@ class AuthorizationError(CodesphereError):
     HTTP Status: 403
     """
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         if message is None:
             message = "You don't have permission to perform this action."
         super().__init__(message)
@@ -48,7 +48,7 @@ class NotFoundError(CodesphereError):
     HTTP Status: 404
     """
 
-    def __init__(self, message: Optional[str] = None, resource: Optional[str] = None):
+    def __init__(self, message: str | None = None, resource: str | None = None):
         self.resource = resource
         if message is None:
             if resource:
@@ -66,8 +66,8 @@ class ValidationError(CodesphereError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        errors: Optional[list[dict[str, Any]]] = None,
+        message: str | None = None,
+        errors: list[dict[str, Any]] | None = None,
     ):
         self.errors = errors or []
         if message is None:
@@ -81,7 +81,7 @@ class ConflictError(CodesphereError):
     HTTP Status: 409
     """
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         if message is None:
             message = "The request conflicts with the current state of the resource."
         super().__init__(message)
@@ -95,8 +95,8 @@ class RateLimitError(CodesphereError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        retry_after: Optional[int] = None,
+        message: str | None = None,
+        retry_after: int | None = None,
     ):
         self.retry_after = retry_after
         if message is None:
@@ -115,11 +115,11 @@ class APIError(CodesphereError):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        status_code: Optional[int] = None,
-        response_body: Optional[Any] = None,
-        request_url: Optional[str] = None,
-        request_method: Optional[str] = None,
+        message: str | None = None,
+        status_code: int | None = None,
+        response_body: Any | None = None,
+        request_url: str | None = None,
+        request_method: str | None = None,
     ):
         self.status_code = status_code
         self.response_body = response_body
@@ -143,7 +143,7 @@ class NetworkError(CodesphereError):
     """Raised for network-related issues like connection failures or timeouts."""
 
     def __init__(
-        self, message: Optional[str] = None, original_error: Optional[Exception] = None
+        self, message: str | None = None, original_error: Exception | None = None
     ):
         self.original_error = original_error
         if message is None:
@@ -154,7 +154,7 @@ class NetworkError(CodesphereError):
 class TimeoutError(NetworkError):
     """Raised when a request times out."""
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: str | None = None):
         if message is None:
             message = "The request timed out. The server may be slow or unavailable."
         super().__init__(message)

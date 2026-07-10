@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ...core.base import ResourceList
+from ...core.operations import APIOperation
 from .schemas import (
     CommandInput,
     CommandOutput,
@@ -7,8 +9,6 @@ from .schemas import (
     WorkspaceCreate,
     WorkspaceStatus,
 )
-from ...core.base import ResourceList
-from ...core.operations import APIOperation
 
 _LIST_BY_TEAM_OP = APIOperation(
     method="GET",

@@ -17,9 +17,8 @@ Run with: uvicorn app:app --reload
 
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Query, Request
@@ -44,7 +43,7 @@ from codesphere.resources.workspace.landscape import (  # noqa: E402
 from codesphere.resources.workspace.logs import LogStage  # noqa: E402
 
 # Global SDK instance (managed via lifespan)
-cs: Optional[CodesphereSDK] = None
+cs: CodesphereSDK | None = None
 
 
 @asynccontextmanager
@@ -71,7 +70,7 @@ templates = Jinja2Templates(directory="templates")
 # =============================================================================
 
 
-def format_datetime(value: Optional[datetime]) -> str:
+def format_datetime(value: datetime | None) -> str:
     """Format datetime for display."""
     if value is None:
         return "N/A"
@@ -156,7 +155,7 @@ async def team_detail(request: Request, team_id: int):
 
     # Get usage summary (last 7 days)
     try:
-        end_date = datetime.now(timezone.utc)
+        end_date = datetime.now(UTC)
         begin_date = end_date - timedelta(days=7)
         usage = await team.usage.get_landscape_summary(
             begin_date=begin_date, end_date=end_date, limit=10
@@ -243,8 +242,8 @@ async def create_workspace(
     team_id: int = Form(...),
     name: str = Form(...),
     plan_id: int = Form(...),
-    base_image: Optional[str] = Form(None),
-    git_url: Optional[str] = Form(None),
+    base_image: str | None = Form(None),
+    git_url: str | None = Form(None),
 ):
     """Create a new workspace."""
     try:
@@ -265,16 +264,16 @@ async def create_workspace(
                 "partials/error.html",
                 {"request": request, "error": str(e)},
             )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/workspaces/{workspace_id}/update", response_class=HTMLResponse)
 async def update_workspace(
     request: Request,
     workspace_id: int,
-    name: Optional[str] = Form(None),
-    plan_id: Optional[int] = Form(None),
-    replicas: Optional[int] = Form(None),
+    name: str | None = Form(None),
+    plan_id: int | None = Form(None),
+    replicas: int | None = Form(None),
 ):
     """Update workspace settings."""
     workspace = await cs.workspaces.get(workspace_id=workspace_id)
@@ -630,8 +629,8 @@ async def logs_partial(
     workspace_id: int,
     stage: str = Query(default="prepare"),
     step: int = Query(default=0),
-    server: Optional[str] = Query(default=None),
-    replica: Optional[int] = Query(default=None),
+    server: str | None = Query(default=None),
+    replica: int | None = Query(default=None),
 ):
     """Get logs for a pipeline stage or server."""
     workspace = await cs.workspaces.get(workspace_id=workspace_id)

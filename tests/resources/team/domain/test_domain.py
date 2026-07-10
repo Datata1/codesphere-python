@@ -1,7 +1,7 @@
 import pytest
 
-from codesphere.resources.team.domain.resources import Domain
 from codesphere.resources.team.domain.manager import TeamDomainManager
+from codesphere.resources.team.domain.resources import Domain
 from codesphere.resources.team.domain.schemas import (
     CustomDomainConfig,
     DomainRouting,
@@ -106,7 +106,7 @@ class TestDomainModel:
         domain, mock_client = domain_model_factory(response_data=sample_domain_data)
 
         config = CustomDomainConfig(max_body_size_mb=100)
-        result = await domain.update(data=config)
+        await domain.update(data=config)
 
         mock_client.request.assert_awaited_once()
 
