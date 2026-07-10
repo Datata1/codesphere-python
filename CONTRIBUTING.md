@@ -73,6 +73,62 @@ You are now ready to start developing!
 
 ---
 
+## Adding a New Resource
+
+Every API resource follows the same three-part pattern. To add one:
+
+1. **Schemas** (`schemas.py`): pydantic models for the API's request/response
+   shapes. Derive from `CamelModel` (handles snake_case ↔ camelCase aliasing),
+   or from `BoundModel` if the returned entity should be able to make further
+   API calls itself (e.g. `workspace.delete()`).
+
+2. **Operations** (`operations.py`): one `APIOperation` constant per endpoint.
+   `response_model` drives response validation *and* the static return type;
+   use `types.NoneType` for endpoints without a response body. Set
+   `input_model` to have the request payload validated before sending.
+
+   ```python
+   from types import NoneType
+   from ...core.operations import APIOperation
+
+   _GET_THING_OP = APIOperation(
+       method="GET",
+       endpoint_template="/things/{thing_id}",
+       response_model=Thing,
+   )
+   _DELETE_THING_OP = APIOperation(
+       method="DELETE",
+       endpoint_template="/things/{thing_id}",
+       response_model=NoneType,
+   )
+   ```
+
+3. **Resource class** (`resources.py`): subclass `ResourceBase` and write one
+   typed public method per operation. Path parameters are passed explicitly
+   as keyword arguments; `data=` is the JSON body, `params=` the query string.
+
+   ```python
+   from ...core import ResourceBase
+
+   class ThingsResource(ResourceBase):
+       async def get(self, thing_id: int) -> Thing:
+           return await self._execute(_GET_THING_OP, thing_id=thing_id)
+
+       async def delete(self, thing_id: int) -> None:
+           await self._execute(_DELETE_THING_OP, thing_id=thing_id)
+   ```
+
+Finally, re-export the public names in the package's `__init__.py` and, for
+top-level resources, register the class in `client.py`. `uv run ty check`
+must pass — the `_execute` generics give you full return-type inference.
+
+**Public API note:** only symbols exported from the top-level `codesphere`
+package (plus documented `codesphere.resources.*` re-exports) are public API.
+Everything in `codesphere.core` is internal and may change between minor
+versions.
+
+---
+
 ## Testing Guidelines
 
 We maintain two types of tests: **unit tests** and **integration tests**. When contributing, please ensure appropriate test coverage for your changes.

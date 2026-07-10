@@ -372,8 +372,6 @@ class TestResourceBase:
 
         assert resource._http_client is mock_client
 
-    def test_inherits_from_api_operation_executor(self):
-        """ResourceBase should inherit from _APIOperationExecutor."""
-        from codesphere.core.handler import _APIOperationExecutor
-
-        assert issubclass(ResourceBase, _APIOperationExecutor)
+    def test_has_execute_method(self):
+        """ResourceBase should expose the typed _execute dispatch method."""
+        assert callable(getattr(ResourceBase, "_execute", None))

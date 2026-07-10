@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import Field
 
 from ....core.base import CamelModel
-from ....core.handler import _APIOperationExecutor
-from ....core.operations import AsyncCallable
 
 
 class ServiceAction(str, Enum):
@@ -72,11 +71,9 @@ class PaginatedResponse(CamelModel, Generic[ItemT]):
         return (self.total_items + current_limit - 1) // current_limit
 
 
-class UsageSummaryResponse(
-    PaginatedResponse[LandscapeServiceSummary], _APIOperationExecutor
-):
+class UsageSummaryResponse(PaginatedResponse[LandscapeServiceSummary]):
     summary: list[LandscapeServiceSummary] = Field(default_factory=list)
-    _refresh_op: AsyncCallable[UsageSummaryResponse] | None = None
+    _refresh_op: Callable[..., Awaitable[Any]] | None = None
     _team_id: int | None = None
 
     @property
@@ -102,12 +99,10 @@ class UsageSummaryResponse(
         return self
 
 
-class UsageEventsResponse(
-    PaginatedResponse[LandscapeServiceEvent], _APIOperationExecutor
-):
+class UsageEventsResponse(PaginatedResponse[LandscapeServiceEvent]):
     events: list[LandscapeServiceEvent] = Field(default_factory=list)
 
-    _refresh_op: AsyncCallable[UsageEventsResponse] | None = None
+    _refresh_op: Callable[..., Awaitable[Any]] | None = None
     _team_id: int | None = None
     _resource_id: str | None = None
 

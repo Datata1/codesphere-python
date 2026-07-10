@@ -1,7 +1,8 @@
+import dataclasses
 from dataclasses import dataclass
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from codesphere.core.operations import APIOperation, StreamOperation
 from codesphere.resources.workspace.logs import LogEntry
@@ -82,19 +83,20 @@ class TestAPIOperation:
         assert operation.response_model == case.response_model
         assert operation.input_model == case.input_model
 
-    def test_operation_is_pydantic_model(self):
-        """APIOperation should be a Pydantic BaseModel."""
-        assert issubclass(APIOperation, BaseModel)
+    def test_operation_is_frozen_dataclass(self):
+        """APIOperation should be a frozen dataclass, not a pydantic model."""
+        assert dataclasses.is_dataclass(APIOperation)
+        assert not issubclass(APIOperation, BaseModel)
 
-    def test_operation_model_copy(self):
-        """APIOperation should support model_copy for creating variants."""
+    def test_operation_replace(self):
+        """APIOperation should support dataclasses.replace for variants."""
         original = APIOperation(
             method="GET",
             endpoint_template="/test",
             response_model=SampleResponseModel,
         )
 
-        copied = original.model_copy(update={"method": "POST"})
+        copied = dataclasses.replace(original, method="POST")
 
         assert copied.method == "POST"
         assert copied.endpoint_template == original.endpoint_template
@@ -138,7 +140,7 @@ class TestAPIOperation:
             endpoint_template="/test",
             response_model=LogEntry,
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             op.method = "POST"
 
 
@@ -156,5 +158,5 @@ class TestStreamOperation:
             endpoint_template="/logs/{id}",
             entry_model=LogEntry,
         )
-        with pytest.raises(ValidationError):
+        with pytest.raises(dataclasses.FrozenInstanceError):
             op.endpoint_template = "/other"

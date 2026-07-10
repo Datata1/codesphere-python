@@ -108,8 +108,10 @@ class ProfileConfig(CamelModel):
         default_factory=dict
     )
 
-    def to_yaml(self, *, exclude_none: bool = True) -> str:
-        data = self.model_dump(by_alias=True, exclude_none=exclude_none, mode="json")
+    def to_yaml(self, *, by_alias: bool = True, exclude_none: bool = True) -> str:
+        data = self.model_dump(
+            by_alias=by_alias, exclude_none=exclude_none, mode="json"
+        )
         return yaml.safe_dump(
             data, default_flow_style=False, allow_unicode=True, sort_keys=False
         )

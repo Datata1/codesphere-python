@@ -1,3 +1,5 @@
+from types import NoneType
+
 from ....core.base import ResourceList
 from ....core.operations import APIOperation
 from .schemas import EnvVar
@@ -11,11 +13,11 @@ _GET_OP = APIOperation(
 _BULK_SET_OP = APIOperation(
     method="PUT",
     endpoint_template="/workspaces/{id}/env-vars",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _BULK_DELETE_OP = APIOperation(
     method="DELETE",
     endpoint_template="/workspaces/{id}/env-vars",
-    response_model=type(None),
+    response_model=NoneType,
 )

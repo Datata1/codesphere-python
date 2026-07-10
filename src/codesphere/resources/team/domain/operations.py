@@ -1,41 +1,39 @@
+from types import NoneType
+
 from ....core.base import ResourceList
 from ....core.operations import APIOperation
-from .schemas import (
-    CustomDomainConfig,
-    DomainBase,
-    DomainVerificationStatus,
-)
+from .resources import Domain
+from .schemas import CustomDomainConfig, DomainVerificationStatus
 
 _LIST_OP = APIOperation(
     method="GET",
     endpoint_template="/domains/team/{team_id}",
-    response_model=ResourceList[DomainBase],
+    response_model=ResourceList[Domain],
 )
 
 _GET_OP = APIOperation(
     method="GET",
     endpoint_template="/domains/team/{team_id}/domain/{name}",
-    response_model=DomainBase,
+    response_model=Domain,
 )
 
 _CREATE_OP = APIOperation(
     method="POST",
     endpoint_template="/domains/team/{team_id}/domain/{name}",
-    response_model=DomainBase,
+    response_model=Domain,
 )
 
 _UPDATE_OP = APIOperation(
     method="PATCH",
     endpoint_template="/domains/team/{team_id}/domain/{name}",
     input_model=CustomDomainConfig,
-    response_model=DomainBase,
+    response_model=Domain,
 )
 
 _UPDATE_WS_OP = APIOperation(
     method="PUT",
     endpoint_template="/domains/team/{team_id}/domain/{name}/workspace-connections",
-    input_model=None,
-    response_model=DomainBase,
+    response_model=Domain,
 )
 
 _VERIFY_OP = APIOperation(
@@ -47,5 +45,5 @@ _VERIFY_OP = APIOperation(
 _DELETE_OP = APIOperation(
     method="DELETE",
     endpoint_template="/domains/team/{team_id}/domain/{name}",
-    response_model=type(None),
+    response_model=NoneType,
 )

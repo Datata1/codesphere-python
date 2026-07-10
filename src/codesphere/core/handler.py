@@ -1,141 +1,107 @@
 import logging
-from functools import partial
-from typing import Any, get_args, get_origin
+from collections.abc import Mapping, Sequence
+from types import NoneType
+from typing import Any, TypeVar, cast
 
 import httpx
-from pydantic import BaseModel, PrivateAttr, RootModel, ValidationError
-from pydantic.fields import FieldInfo
+from pydantic import BaseModel, RootModel, ValidationError
 
 from ..http_client import APIHttpClient
 from .operations import APIOperation
 
 log = logging.getLogger(__name__)
 
+ResponseT = TypeVar("ResponseT")
 
-class _APIOperationExecutor:
-    _http_client: APIHttpClient | None = PrivateAttr(default=None)
-
-    def __getattribute__(self, name: str) -> Any:
-        attr = super().__getattribute__(name)
-        operation = None
-
-        if isinstance(attr, FieldInfo):
-            if isinstance(attr.default, APIOperation):
-                operation = attr.default
-        elif isinstance(attr, APIOperation):
-            operation = attr
-
-        if operation:
-            return partial(self._execute_operation, operation=operation)
-
-        return attr
-
-    async def _execute_operation(self, operation: APIOperation, **kwargs: Any) -> Any:
-        handler = APIRequestHandler(executor=self, operation=operation, kwargs=kwargs)
-        return await handler.execute()
-
-    def validate_http_client(self) -> APIHttpClient:
-        if self._http_client is None or not hasattr(self._http_client, "request"):
-            raise RuntimeError(
-                "Cannot access resource on a detached model. HTTP client missing."
-            )
-        return self._http_client
+type RequestData = BaseModel | Mapping[str, Any] | Sequence[Any]
 
 
-class APIRequestHandler:
-    def __init__(
-        self, executor: _APIOperationExecutor, operation: APIOperation, kwargs: dict
-    ):
-        self.executor = executor
-        self.operation = operation
-        self.kwargs = kwargs
-        self.http_client = getattr(executor, "_http_client", None)
+async def execute_operation(
+    client: APIHttpClient,
+    op: APIOperation[ResponseT],
+    *,
+    data: RequestData | None = None,
+    params: Mapping[str, Any] | None = None,
+    path_params: Mapping[str, Any] | None = None,
+) -> ResponseT:
+    """Execute a declarative :class:`APIOperation` against the API.
 
-    async def execute(self) -> Any:
-        endpoint, request_kwargs = self._prepare_request_args()
+    Path parameters are passed explicitly and formatted into
+    ``op.endpoint_template``. When ``op.input_model`` is set, ``data`` is
+    validated against it before the request is sent. A non-``None`` ``data``
+    is always sent as the JSON body, even when empty.
+    """
+    endpoint = _format_endpoint(op.endpoint_template, path_params or {})
 
-        response = await self._make_request(
-            self.operation.method, endpoint, **request_kwargs
+    request_kwargs: dict[str, Any] = {}
+    if params is not None:
+        request_kwargs["params"] = params
+    if data is not None:
+        request_kwargs["json"] = _serialize_payload(data, op.input_model)
+
+    response = await client.request(
+        method=op.method, endpoint=endpoint, **request_kwargs
+    )
+    return _parse_response(response, op.response_model, client, endpoint)
+
+
+def _format_endpoint(template: str, path_params: Mapping[str, Any]) -> str:
+    try:
+        return template.format(**path_params)
+    except KeyError as e:
+        raise ValueError(
+            f"Missing path parameter {e.args[0]!r} for endpoint template {template!r}"
+        ) from e
+
+
+def _serialize_payload(data: RequestData, input_model: type[BaseModel] | None) -> Any:
+    if input_model is not None:
+        model = (
+            data if isinstance(data, input_model) else input_model.model_validate(data)
         )
+        return model.model_dump(exclude_none=True)
+    if isinstance(data, BaseModel):
+        return data.model_dump(exclude_none=True)
+    return data
 
-        return await self._parse_and_validate_response(
-            response, self.operation.response_model, endpoint
-        )
 
-    def _prepare_request_args(self) -> tuple[str, dict]:
-        format_args = {}
-        format_args.update(self.kwargs)
-        format_args.update(self.executor.__dict__)
+def _parse_response(
+    response: httpx.Response,
+    response_model: type[ResponseT],
+    client: APIHttpClient | None,
+    endpoint_for_logging: str,
+) -> ResponseT:
+    if response_model is NoneType:
+        return cast(ResponseT, None)
 
-        if isinstance(self.executor, BaseModel):
-            format_args.update(self.executor.model_dump())
+    try:
+        json_response = response.json()
+        log.debug(f"Validating JSON response for endpoint: {endpoint_for_logging}")
+    except httpx.ResponseNotRead:
+        log.warning(f"No JSON response body for {endpoint_for_logging}")
+        return cast(ResponseT, None)
 
-        format_args.update(self.kwargs)
+    model_cls = cast(type[BaseModel], response_model)
+    try:
+        instance = model_cls.model_validate(json_response)
+    except ValidationError as e:
+        log.error(f"Pydantic validation failed for {endpoint_for_logging}. Error: {e}")
+        log.error(f"Failing JSON data: {json_response}")
+        raise
 
-        endpoint = self.operation.endpoint_template.format(**format_args)
+    _bind_client(instance, client)
+    log.debug("Successfully validated response for %s.", endpoint_for_logging)
+    return cast(ResponseT, instance)
 
-        payload = None
-        if json_data_obj := self.kwargs.get("data"):
-            if isinstance(json_data_obj, BaseModel):
-                payload = json_data_obj.model_dump(exclude_none=True)
-            else:
-                payload = json_data_obj
 
-        request_kwargs = {"params": self.kwargs.get("params"), "json": payload}
-        return endpoint, {k: v for k, v in request_kwargs.items() if v is not None}
+def _bind_client(instance: BaseModel, client: APIHttpClient | None) -> None:
+    """Attach the HTTP client to returned models so they can make calls."""
+    from .base import BoundModel
 
-    async def _make_request(
-        self, method: str, endpoint: str, **kwargs: Any
-    ) -> httpx.Response:
-        client = self.executor.validate_http_client()
-        return await client.request(method=method, endpoint=endpoint, **kwargs)
+    if isinstance(instance, BoundModel):
+        instance._http_client = client
 
-    def _inject_client_into_model(self, model_instance: BaseModel) -> BaseModel:
-        if hasattr(model_instance, "_http_client"):
-            model_instance._http_client = self.http_client
-
-        if isinstance(model_instance, RootModel) and isinstance(
-            model_instance.root, list
-        ):
-            for item in model_instance.root:
-                if hasattr(item, "_http_client"):
-                    item._http_client = self.http_client
-
-        return model_instance
-
-    async def _parse_and_validate_response(
-        self,
-        response: httpx.Response,
-        response_model: type[BaseModel] | type[list[BaseModel]] | None,
-        endpoint_for_logging: str,
-    ) -> Any:
-        if response_model in (None, type(None)):
-            return None
-
-        try:
-            json_response = response.json()
-            log.debug(f"Validating JSON response for endpoint: {endpoint_for_logging}")
-        except httpx.ResponseNotRead:
-            log.warning(f"No JSON response body for {endpoint_for_logging}")
-            return None
-
-        try:
-            origin = get_origin(response_model)
-            if origin is list or origin is list:
-                item_model = get_args(response_model)[0]
-                instances = [item_model.model_validate(item) for item in json_response]
-                for instance in instances:
-                    self._inject_client_into_model(instance)
-                log.debug("Successfully validated response into list of models.")
-                return instances
-            else:
-                instance = response_model.model_validate(json_response)
-                self._inject_client_into_model(instance)
-                log.debug("Successfully validated response into single model.")
-                return instance
-        except ValidationError as e:
-            log.error(
-                f"Pydantic validation failed for {endpoint_for_logging}. Error: {e}"
-            )
-            log.error(f"Failing JSON data: {json_response}")
-            raise e
+    if isinstance(instance, RootModel) and isinstance(instance.root, list):
+        for item in instance.root:
+            if isinstance(item, BoundModel):
+                item._http_client = client

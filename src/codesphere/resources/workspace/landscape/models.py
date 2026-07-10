@@ -5,8 +5,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
-from ....core.base import ResourceList
-from ....core.handler import _APIOperationExecutor
+from ....core.base import ResourceBase, ResourceList
 from ....http_client import APIHttpClient
 from .operations import (
     _DEPLOY_OP,
@@ -49,9 +48,9 @@ def _profile_filename(name: str) -> str:
     return f"ci.{name}.yml"
 
 
-class WorkspaceLandscapeManager(_APIOperationExecutor):
+class WorkspaceLandscapeManager(ResourceBase):
     def __init__(self, http_client: APIHttpClient, workspace_id: int):
-        self._http_client = http_client
+        super().__init__(http_client)
         self._workspace_id = workspace_id
         self.id = workspace_id
 
@@ -59,8 +58,8 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
         from ..operations import _EXECUTE_COMMAND_OP
         from ..schemas import CommandInput
 
-        return await self._execute_operation(
-            _EXECUTE_COMMAND_OP, data=CommandInput(command=command)
+        return await self._execute(
+            _EXECUTE_COMMAND_OP, id=self.id, data=CommandInput(command=command)
         )
 
     async def list_profiles(self) -> ResourceList[Profile]:
@@ -94,15 +93,15 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
     async def deploy(self, profile: str | None = None) -> None:
         if profile is not None:
             _validate_profile_name(profile)
-            await self._execute_operation(_DEPLOY_WITH_PROFILE_OP, profile=profile)
+            await self._execute(_DEPLOY_WITH_PROFILE_OP, id=self.id, profile=profile)
         else:
-            await self._execute_operation(_DEPLOY_OP)
+            await self._execute(_DEPLOY_OP, id=self.id)
 
     async def teardown(self) -> None:
-        await self._execute_operation(_TEARDOWN_OP)
+        await self._execute(_TEARDOWN_OP, id=self.id)
 
     async def scale(self, services: dict[str, int]) -> None:
-        await self._execute_operation(_SCALE_OP, data=services)
+        await self._execute(_SCALE_OP, id=self.id, data=services)
 
     async def start_stage(
         self,
@@ -114,23 +113,26 @@ class WorkspaceLandscapeManager(_APIOperationExecutor):
 
         if profile is not None:
             _validate_profile_name(profile)
-            await self._execute_operation(
-                _START_PIPELINE_STAGE_WITH_PROFILE_OP, stage=stage, profile=profile
+            await self._execute(
+                _START_PIPELINE_STAGE_WITH_PROFILE_OP,
+                id=self.id,
+                stage=stage,
+                profile=profile,
             )
         else:
-            await self._execute_operation(_START_PIPELINE_STAGE_OP, stage=stage)
+            await self._execute(_START_PIPELINE_STAGE_OP, id=self.id, stage=stage)
 
     async def stop_stage(self, stage: PipelineStage | str) -> None:
         if isinstance(stage, PipelineStage):
             stage = stage.value
 
-        await self._execute_operation(_STOP_PIPELINE_STAGE_OP, stage=stage)
+        await self._execute(_STOP_PIPELINE_STAGE_OP, id=self.id, stage=stage)
 
     async def get_stage_status(self, stage: PipelineStage | str) -> PipelineStatusList:
         if isinstance(stage, PipelineStage):
             stage = stage.value
 
-        return await self._execute_operation(_GET_PIPELINE_STATUS_OP, stage=stage)
+        return await self._execute(_GET_PIPELINE_STATUS_OP, id=self.id, stage=stage)
 
     async def wait_for_stage(
         self,

@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 
-from pydantic import Field
-
-from ...core import APIOperation, AsyncCallable, _APIOperationExecutor
-from ...core.base import CamelModel
+from ...core.base import BoundModel, CamelModel
 from .domain.manager import TeamDomainManager
 from .usage.manager import TeamUsageManager
 
@@ -26,23 +23,16 @@ class TeamBase(CamelModel):
     role: int | None = None
 
 
-class Team(TeamBase, _APIOperationExecutor):
-    delete: AsyncCallable[None]
-    delete = Field(
-        default=APIOperation(
-            method="DELETE",
-            endpoint_template="/teams/{id}",
-            response_model=type(None),
-        ),
-        exclude=True,
-    )
+class Team(TeamBase, BoundModel):
+    async def delete(self) -> None:
+        from .operations import _DELETE_TEAM_OP
+
+        await self._execute(_DELETE_TEAM_OP, team_id=self.id)
 
     @cached_property
     def domains(self) -> TeamDomainManager:
-        http_client = self.validate_http_client()
-        return TeamDomainManager(http_client, team_id=self.id)
+        return TeamDomainManager(self._client(), team_id=self.id)
 
     @cached_property
     def usage(self) -> TeamUsageManager:
-        http_client = self.validate_http_client()
-        return TeamUsageManager(http_client, team_id=self.id)
+        return TeamUsageManager(self._client(), team_id=self.id)

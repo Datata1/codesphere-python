@@ -4,10 +4,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from functools import partial
 
-from pydantic import Field
-
-from ....core.handler import _APIOperationExecutor
-from ....core.operations import AsyncCallable
+from ....core.base import ResourceBase
 from ....http_client import APIHttpClient
 from .operations import _GET_LANDSCAPE_EVENTS_OP, _GET_LANDSCAPE_SUMMARY_OP
 from .schemas import (
@@ -18,7 +15,7 @@ from .schemas import (
 )
 
 
-class TeamUsageManager(_APIOperationExecutor):
+class TeamUsageManager(ResourceBase):
     """Manager for team usage history operations.
 
     Provides access to landscape service usage summaries and events with
@@ -48,12 +45,8 @@ class TeamUsageManager(_APIOperationExecutor):
     """
 
     def __init__(self, http_client: APIHttpClient, team_id: int):
-        self._http_client = http_client
+        super().__init__(http_client)
         self.team_id = team_id
-
-    get_landscape_summary_op: AsyncCallable[UsageSummaryResponse] = Field(
-        default=_GET_LANDSCAPE_SUMMARY_OP, exclude=True
-    )
 
     async def get_landscape_summary(
         self,
@@ -72,11 +65,13 @@ class TeamUsageManager(_APIOperationExecutor):
             "limit": min(max(1, limit), 100),
             "offset": max(0, offset),
         }
-        result: UsageSummaryResponse = await self.get_landscape_summary_op(
-            params=params
+        result = await self._execute(
+            _GET_LANDSCAPE_SUMMARY_OP, team_id=self.team_id, params=params
         )
 
-        result._refresh_op = partial(self.get_landscape_summary_op)
+        result._refresh_op = partial(
+            self._execute, _GET_LANDSCAPE_SUMMARY_OP, team_id=self.team_id
+        )
         result._team_id = self.team_id
 
         return result
@@ -106,10 +101,6 @@ class TeamUsageManager(_APIOperationExecutor):
 
             offset += page_size
 
-    get_landscape_events_op: AsyncCallable[UsageEventsResponse] = Field(
-        default=_GET_LANDSCAPE_EVENTS_OP, exclude=True
-    )
-
     async def get_landscape_events(
         self,
         resource_id: str,
@@ -128,12 +119,18 @@ class TeamUsageManager(_APIOperationExecutor):
             "limit": min(max(1, limit), 100),
             "offset": max(0, offset),
         }
-        result: UsageEventsResponse = await self.get_landscape_events_op(
-            resource_id=resource_id, params=params
+        result = await self._execute(
+            _GET_LANDSCAPE_EVENTS_OP,
+            team_id=self.team_id,
+            resource_id=resource_id,
+            params=params,
         )
 
         result._refresh_op = partial(
-            self.get_landscape_events_op, resource_id=resource_id
+            self._execute,
+            _GET_LANDSCAPE_EVENTS_OP,
+            team_id=self.team_id,
+            resource_id=resource_id,
         )
         result._team_id = self.team_id
         result._resource_id = resource_id
