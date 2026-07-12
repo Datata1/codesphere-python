@@ -58,6 +58,30 @@ If no token is provided at all, `CodesphereSDK()` raises an
 `AuthenticationError` at construction (importing the package never requires
 any environment variable).
 
+### Retries
+
+Retries are off by default. Opt in with a `RetryConfig`:
+
+```python
+from codesphere import CodesphereSDK, RetryConfig
+
+sdk = CodesphereSDK(
+    token="your-api-token",
+    retry=RetryConfig(max_retries=3),
+)
+```
+
+Requests using an idempotent method (`GET`, `HEAD`, `PUT`, `DELETE`) are then
+retried on `429`, `502`, `503`, and `504` responses as well as on
+connect/timeout errors. The delay honors the server's `Retry-After` header
+(seconds or HTTP-date) when present, otherwise exponential backoff with
+jitter (`backoff_factor * 2**attempt`). `POST` is never retried unless you
+add it to `retry_methods` explicitly:
+
+```python
+RetryConfig(max_retries=3, retry_methods=frozenset({"GET", "POST"}))
+```
+
 ## Quick Start
 
 ```python

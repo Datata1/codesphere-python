@@ -22,6 +22,7 @@ Basic Usage:
 import logging
 
 from .client import CodesphereSDK
+from .config import RetryConfig
 from .exceptions import (
     APIError,
     AuthenticationError,
@@ -75,6 +76,7 @@ __all__ = [
     "NetworkError",
     "NotFoundError",
     "RateLimitError",
+    "RetryConfig",
     # Resources
     "Team",
     "TeamBase",
