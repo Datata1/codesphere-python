@@ -29,12 +29,16 @@ from .exceptions import (
     AuthorizationError,
     CodesphereError,
     ConflictError,
+    FeatureFlagError,
+    FeatureNotAvailableError,
+    FeatureNotEnabledError,
     NetworkError,
     NotFoundError,
     RateLimitError,
     TimeoutError,
     ValidationError,
 )
+from .resources.flags import CategoryFlags, FlagCategory, FlagsSnapshot
 from .resources.metadata import Characteristic, Datacenter, Image, WsPlan
 from .resources.team import (
     CustomDomainConfig,
@@ -72,6 +76,12 @@ __all__ = [
     "DomainRouting",
     "DomainVerificationStatus",
     "EnvVar",
+    "FeatureFlagError",
+    "FeatureNotAvailableError",
+    "FeatureNotEnabledError",
+    "FlagCategory",
+    "FlagsSnapshot",
+    "CategoryFlags",
     "Image",
     "NetworkError",
     "NotFoundError",

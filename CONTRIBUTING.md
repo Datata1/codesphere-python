@@ -129,6 +129,56 @@ versions.
 
 ---
 
+## Gating an Endpoint Behind a Feature Flag
+
+Platform instances enable features via flags (`GET /ide-service/flags`,
+three categories: `internal`, `preview`, `features`). If an SDK feature only
+works when a flag is enabled, declare it on the operation — **always with an
+explicit category**:
+
+```python
+from ...core.operations import APIOperation
+from ...feature_flags import FlagCategory, FlagRequirement
+
+_LIST_VPN_CONFIGS_OP = APIOperation(
+    method="GET",
+    endpoint_template="/vpn/configs",
+    response_model=ResourceList[VpnConfig],
+    required_flag=FlagRequirement("vpn", FlagCategory.INTERNAL),
+)
+```
+
+Nothing else is needed: `execute_operation` checks the flag **before any
+request** and raises `FeatureNotAvailableError` (flag missing on this
+instance) or `FeatureNotEnabledError` (available but off). The flags
+snapshot is fetched once per client and cached; `await sdk.flags.refresh()`
+re-fetches. Instances without the flags endpoint fail closed.
+
+For code paths that don't go through an `APIOperation` (SSE streams,
+shell-command features), check explicitly:
+
+```python
+await self._require_flag(FlagRequirement("workspace-ssh", FlagCategory.PREVIEW))
+```
+
+For async generators, perform this check in a plain `async def` factory
+*before* returning the generator, so the call fails fast instead of at the
+first iteration.
+
+**Testing a gated endpoint:** register a respx route for
+`/ide-service/flags` alongside the endpoint route, and assert the endpoint
+route was **not** called when the flag is disabled:
+
+```python
+mock_api.get("/ide-service/flags").respond(200, json={"preview": {"available": ["x"], "enabled": []}})
+route = mock_api.get("/gated").respond(200, json={})
+with pytest.raises(FeatureNotEnabledError):
+    await resource.gated_call()
+assert route.called is False
+```
+
+---
+
 ## Testing Guidelines
 
 We maintain two types of tests: **unit tests** and **integration tests**. When contributing, please ensure appropriate test coverage for your changes.

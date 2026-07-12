@@ -12,6 +12,7 @@ from pydantic import SecretStr
 
 from .config import RetryConfig
 from .exceptions import NetworkError, TimeoutError, raise_for_status
+from .feature_flags import FlagsStore
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +50,9 @@ class APIHttpClient:
         self._base_url = base_url
         self._client: httpx.AsyncClient | None = None
         self._retry = retry if retry is not None else RetryConfig()
+        # Per-connection feature-flags cache; the transport never reads it
+        # itself (see feature_flags.FlagsStore).
+        self.flags_store = FlagsStore(self)
 
         self._timeout_config = timeout
         self._client_config: dict[str, Any] = {

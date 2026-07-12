@@ -6,6 +6,7 @@ from pydantic import SecretStr
 from .config import RetryConfig, Settings
 from .exceptions import AuthenticationError
 from .http_client import APIHttpClient
+from .resources.flags import FlagsResource
 from .resources.metadata import MetadataResource
 from .resources.team import TeamsResource
 from .resources.workspace import WorkspacesResource
@@ -24,6 +25,7 @@ class CodesphereSDK:
     teams: TeamsResource
     workspaces: WorkspacesResource
     metadata: MetadataResource
+    flags: FlagsResource
 
     def __init__(
         self,
@@ -60,6 +62,7 @@ class CodesphereSDK:
         self.teams = TeamsResource(self._http_client)
         self.workspaces = WorkspacesResource(self._http_client)
         self.metadata = MetadataResource(self._http_client)
+        self.flags = FlagsResource(self._http_client)
 
     @staticmethod
     def _resolve_token(token: str | SecretStr | None, settings: Settings) -> SecretStr:

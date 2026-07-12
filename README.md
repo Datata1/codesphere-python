@@ -82,6 +82,22 @@ add it to `retry_methods` explicitly:
 RetryConfig(max_retries=3, retry_methods=frozenset({"GET", "POST"}))
 ```
 
+### Feature flags
+
+Platform instances enable different features. Inspect them via `sdk.flags`:
+
+```python
+snapshot = await sdk.flags.get()          # fetched once, then cached
+if await sdk.flags.is_enabled("workspace-ssh"):
+    ...
+
+await sdk.flags.refresh()                 # re-fetch after platform changes
+```
+
+SDK features that depend on a platform flag raise `FeatureNotEnabledError`
+(or `FeatureNotAvailableError` if the instance doesn't have the feature at
+all) *before* sending any request when the flag is off.
+
 ## Quick Start
 
 ```python

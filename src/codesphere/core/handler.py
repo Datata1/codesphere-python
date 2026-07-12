@@ -29,8 +29,13 @@ async def execute_operation(
     Path parameters are passed explicitly and formatted into
     ``op.endpoint_template``. When ``op.input_model`` is set, ``data`` is
     validated against it before the request is sent. A non-``None`` ``data``
-    is always sent as the JSON body, even when empty.
+    is always sent as the JSON body, even when empty. When the operation
+    declares ``required_flag``, the flag is checked first — nothing is
+    sent if the connected instance does not have it enabled.
     """
+    if op.required_flag is not None:
+        await client.flags_store.require(op.required_flag)
+
     endpoint = _format_endpoint(op.endpoint_template, path_params or {})
 
     request_kwargs: dict[str, Any] = {}

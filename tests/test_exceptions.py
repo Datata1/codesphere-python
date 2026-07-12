@@ -13,6 +13,9 @@ from codesphere import (
     AuthorizationError,
     CodesphereError,
     ConflictError,
+    FeatureFlagError,
+    FeatureNotAvailableError,
+    FeatureNotEnabledError,
     NetworkError,
     NotFoundError,
     RateLimitError,
@@ -160,6 +163,9 @@ class TestDefaultConstructors:
             (APIError, "API request failed"),
             (NetworkError, "network error"),
             (TimeoutError, "timed out"),
+            (FeatureFlagError, "Feature flag"),
+            (FeatureNotAvailableError, "not available"),
+            (FeatureNotEnabledError, "not enabled"),
         ],
     )
     def test_default_message(self, cls, fragment):
@@ -176,6 +182,19 @@ class TestDefaultConstructors:
 
     def test_timeout_is_a_network_error(self):
         assert issubclass(TimeoutError, NetworkError)
+
+    def test_flag_errors_share_a_base_and_carry_metadata(self):
+        assert issubclass(FeatureNotAvailableError, FeatureFlagError)
+        assert issubclass(FeatureNotEnabledError, FeatureFlagError)
+
+        error = FeatureNotEnabledError(flag="vpn", category="internal")
+        assert error.flag == "vpn"
+        assert error.category == "internal"
+        assert "'vpn' (category 'internal')" in error.message
+
+    def test_not_available_mentions_legacy_platform_when_flagged(self):
+        error = FeatureNotAvailableError(flag="vpn", legacy_platform=True)
+        assert "predate feature flags" in error.message
 
 
 class TestEndToEndViaTransport:

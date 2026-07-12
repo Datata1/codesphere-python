@@ -5,6 +5,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, PrivateAttr, RootModel
 from pydantic.alias_generators import to_camel
 
+from ..feature_flags import FlagRequirement
 from ..http_client import APIHttpClient
 from .handler import RequestData, execute_operation
 from .operations import APIOperation
@@ -30,6 +31,10 @@ class ResourceBase:
         return await execute_operation(
             self._http_client, op, data=data, params=params, path_params=path_params
         )
+
+    async def _require_flag(self, requirement: FlagRequirement) -> None:
+        """Fail fast unless the platform flag is enabled (non-operation paths)."""
+        await self._http_client.flags_store.require(requirement)
 
 
 class TeamScopedResource(ResourceBase):
@@ -136,6 +141,10 @@ class BoundModel(CamelModel):
         return await execute_operation(
             self._client(), op, data=data, params=params, path_params=path_params
         )
+
+    async def _require_flag(self, requirement: FlagRequirement) -> None:
+        """Fail fast unless the platform flag is enabled (non-operation paths)."""
+        await self._client().flags_store.require(requirement)
 
 
 class ResourceList(RootModel[list[ModelT]], Generic[ModelT]):
