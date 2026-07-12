@@ -4,16 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-from pydantic import BaseModel
 
 from codesphere.exceptions import APIError, NotFoundError
-
-
-class DummyModel(BaseModel):
-    """A simple Pydantic model for testing."""
-
-    name: str
-    value: int
 
 
 @dataclass
@@ -31,37 +23,37 @@ class RequestTestCase:
 request_test_cases = [
     RequestTestCase(
         name="GET request successful",
-        method="get",
+        method="GET",
         use_context_manager=True,
     ),
     RequestTestCase(
-        name="POST request with Pydantic model successful",
-        method="post",
+        name="POST request with dictionary successful",
+        method="POST",
         use_context_manager=True,
-        payload=DummyModel(name="test", value=123),
+        payload={"name": "test", "value": 123},
     ),
     RequestTestCase(
         name="PUT request with dictionary successful",
-        method="put",
+        method="PUT",
         use_context_manager=True,
         payload={"key": "value"},
     ),
     RequestTestCase(
         name="Request fails without context manager",
-        method="get",
+        method="GET",
         use_context_manager=False,
         expected_exception=RuntimeError,
     ),
     RequestTestCase(
         name="Request with 404 error raises NotFoundError",
-        method="get",
+        method="GET",
         use_context_manager=True,
         mock_status_code=404,
         expected_exception=NotFoundError,
     ),
     RequestTestCase(
         name="Request with 500 error raises APIError",
-        method="post",
+        method="POST",
         use_context_manager=True,
         mock_status_code=500,
         expected_exception=APIError,
@@ -120,27 +112,22 @@ class TestAPIHttpClient:
             ):
                 if case.use_context_manager:
                     async with api_http_client:
-                        await getattr(api_http_client, case.method)("/test-endpoint")
+                        await api_http_client.request(case.method, "/test-endpoint")
                 else:
-                    await getattr(api_http_client, case.method)("/test-endpoint")
+                    await api_http_client.request(case.method, "/test-endpoint")
             return
 
         with patch("httpx.AsyncClient", return_value=mock_http_client):
             async with api_http_client:
-                request_func = getattr(api_http_client, case.method)
-                response = await request_func("/test-endpoint", json=case.payload)
+                response = await api_http_client.request(
+                    case.method, "/test-endpoint", json=case.payload
+                )
 
                 mock_http_client.request.assert_awaited_once()
                 call_args = mock_http_client.request.call_args
-                assert call_args.args[0] == case.method.upper()
+                assert call_args.args[0] == case.method
                 assert call_args.args[1] == "/test-endpoint"
-
-                if isinstance(case.payload, BaseModel):
-                    assert call_args.kwargs["json"] == case.payload.model_dump(
-                        exclude_none=True
-                    )
-                else:
-                    assert call_args.kwargs["json"] == case.payload
+                assert call_args.kwargs["json"] == case.payload
 
                 assert response.status_code == case.mock_status_code
 

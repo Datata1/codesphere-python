@@ -1,33 +1,34 @@
 import logging
-from functools import partial
+from types import TracebackType
 from typing import Any
 
 import httpx
-from pydantic import BaseModel
+from pydantic import SecretStr
 
-from .config import settings
 from .exceptions import NetworkError, TimeoutError, raise_for_status
 
 log = logging.getLogger(__name__)
 
 
 class APIHttpClient:
-    def __init__(self, base_url: str = "https://codesphere.com/api"):
-        self._token = settings.token.get_secret_value()
-        self._base_url = base_url or str(settings.base_url)
+    """Thin async transport around httpx.
+
+    Receives its full configuration from the caller (the SDK resolves
+    arguments, environment variables, and defaults) and owns nothing but
+    the connection lifecycle and error mapping.
+    """
+
+    def __init__(self, *, token: SecretStr, base_url: str, timeout: httpx.Timeout):
+        self._token = token.get_secret_value()
+        self._base_url = base_url
         self._client: httpx.AsyncClient | None = None
 
-        self._timeout_config = httpx.Timeout(
-            settings.client_timeout_connect, read=settings.client_timeout_read
-        )
-        self._client_config = {
+        self._timeout_config = timeout
+        self._client_config: dict[str, Any] = {
             "base_url": self._base_url,
             "headers": {"Authorization": f"Bearer {self._token}"},
             "timeout": self._timeout_config,
         }
-
-        for method in ["get", "post", "put", "patch", "delete"]:
-            setattr(self, method, partial(self.request, method.upper()))
 
     def _get_client(self) -> httpx.AsyncClient:
         if not self._client:
@@ -37,30 +38,37 @@ class APIHttpClient:
             )
         return self._client
 
-    async def open(self):
+    async def open(self) -> None:
         if not self._client:
             self._client = httpx.AsyncClient(**self._client_config)
             await self._client.__aenter__()
 
-    async def close(self, exc_type=None, exc_val=None, exc_tb=None):
+    async def close(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
+    ) -> None:
         if self._client:
             await self._client.__aexit__(exc_type, exc_val, exc_tb)
             self._client = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "APIHttpClient":
         await self.open()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.close(exc_type, exc_val, exc_tb)
 
     async def request(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> httpx.Response:
         client = self._get_client()
-
-        if "json" in kwargs and isinstance(kwargs["json"], BaseModel):
-            kwargs["json"] = kwargs["json"].model_dump(exclude_none=True)
 
         log.debug(f"Request: {method} {endpoint}")
         log.debug(f"Request kwargs: {kwargs}")
