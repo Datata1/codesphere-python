@@ -1,46 +1,48 @@
+from types import NoneType
+
 from ....core.operations import APIOperation
 from .schemas import PipelineStatusList
 
 _DEPLOY_OP = APIOperation(
     method="POST",
     endpoint_template="/workspaces/{id}/landscape/deploy",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _DEPLOY_WITH_PROFILE_OP = APIOperation(
     method="POST",
     endpoint_template="/workspaces/{id}/landscape/deploy/{profile}",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _TEARDOWN_OP = APIOperation(
     method="DELETE",
     endpoint_template="/workspaces/{id}/landscape/teardown",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _SCALE_OP = APIOperation(
     method="PATCH",
     endpoint_template="/workspaces/{id}/landscape/scale",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _START_PIPELINE_STAGE_OP = APIOperation(
     method="POST",
     endpoint_template="/workspaces/{id}/pipeline/{stage}/start",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _START_PIPELINE_STAGE_WITH_PROFILE_OP = APIOperation(
     method="POST",
     endpoint_template="/workspaces/{id}/pipeline/{stage}/start/{profile}",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _STOP_PIPELINE_STAGE_OP = APIOperation(
     method="POST",
     endpoint_template="/workspaces/{id}/pipeline/{stage}/stop",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _GET_PIPELINE_STATUS_OP = APIOperation(

@@ -89,8 +89,6 @@ exclude = [
     # Each exclusion below is temporary and owned by a refactor ticket in
     # plans/refactor/. When a ticket lands, its paths MUST be removed here.
     # Do not add new exclusions without a ticket reference.
-    "src/codesphere/core/",           # ticket 02 (typed operation dispatch)
-    "src/codesphere/resources/",      # tickets 02 + 04 (dispatch, normalization)
     "src/codesphere/http_client.py",  # ticket 03 (client config & lifecycle)
     "src/codesphere/config.py",       # ticket 03 (client config & lifecycle)
     "tests/",                         # ticket 06 (respx-based test suite)

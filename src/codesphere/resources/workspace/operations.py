@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import NoneType
+
 from ...core.base import ResourceList
 from ...core.operations import APIOperation
 from .schemas import (
@@ -32,13 +34,13 @@ _CREATE_OP = APIOperation(
 _UPDATE_OP = APIOperation(
     method="PATCH",
     endpoint_template="/workspaces/{id}",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _DELETE_OP = APIOperation(
     method="DELETE",
     endpoint_template="/workspaces/{id}",
-    response_model=type(None),
+    response_model=NoneType,
 )
 
 _GET_STATUS_OP = APIOperation(

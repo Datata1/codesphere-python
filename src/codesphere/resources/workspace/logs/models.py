@@ -73,6 +73,9 @@ class LogStream:
                 yield entry
 
     async def _parse_sse_stream(self) -> AsyncIterator[LogEntry]:
+        if self._response is None:
+            raise RuntimeError("LogStream must be used as async context manager")
+
         event_type: str | None = None
         data_buffer: list[str] = []
 

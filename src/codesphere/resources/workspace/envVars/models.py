@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from ....core.base import ResourceList
-from ....core.handler import _APIOperationExecutor
+from ....core.base import ResourceBase, ResourceList
 from ....http_client import APIHttpClient
 from .operations import _BULK_DELETE_OP, _BULK_SET_OP, _GET_OP
 from .schemas import EnvVar
@@ -11,18 +10,18 @@ from .schemas import EnvVar
 log = logging.getLogger(__name__)
 
 
-class WorkspaceEnvVarManager(_APIOperationExecutor):
+class WorkspaceEnvVarManager(ResourceBase):
     def __init__(self, http_client: APIHttpClient, workspace_id: int):
-        self._http_client = http_client
+        super().__init__(http_client)
         self._workspace_id = workspace_id
         self.id = workspace_id
 
-    async def get(self) -> list[EnvVar]:
-        return await self._execute_operation(_GET_OP)
+    async def get(self) -> ResourceList[EnvVar]:
+        return await self._execute(_GET_OP, id=self.id)
 
     async def set(self, env_vars: ResourceList[EnvVar] | list[dict[str, str]]) -> None:
         payload = ResourceList[EnvVar].model_validate(env_vars)
-        await self._execute_operation(_BULK_SET_OP, data=payload.model_dump())
+        await self._execute(_BULK_SET_OP, id=self.id, data=payload)
 
     async def delete(self, items: list[str] | ResourceList[EnvVar]) -> None:
         if not items:
@@ -38,4 +37,4 @@ class WorkspaceEnvVarManager(_APIOperationExecutor):
                 payload.append(item["name"])
 
         if payload:
-            await self._execute_operation(_BULK_DELETE_OP, data=payload)
+            await self._execute(_BULK_DELETE_OP, id=self.id, data=payload)

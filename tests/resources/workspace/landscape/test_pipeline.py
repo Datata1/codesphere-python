@@ -91,34 +91,34 @@ class TestWorkspaceLandscapeManagerPipeline:
     @pytest.mark.asyncio
     async def test_start_stage_with_enum(self, landscape_manager):
         """Test start_stage with PipelineStage enum."""
-        landscape_manager._execute_operation = AsyncMock()
+        landscape_manager._execute = AsyncMock()
 
         await landscape_manager.start_stage(PipelineStage.PREPARE)
 
-        landscape_manager._execute_operation.assert_called_once()
-        call_args = landscape_manager._execute_operation.call_args
+        landscape_manager._execute.assert_called_once()
+        call_args = landscape_manager._execute.call_args
         assert call_args.kwargs["stage"] == "prepare"
 
     @pytest.mark.asyncio
     async def test_start_stage_with_string(self, landscape_manager):
         """Test start_stage with string stage."""
-        landscape_manager._execute_operation = AsyncMock()
+        landscape_manager._execute = AsyncMock()
 
         await landscape_manager.start_stage("run")
 
-        landscape_manager._execute_operation.assert_called_once()
-        call_args = landscape_manager._execute_operation.call_args
+        landscape_manager._execute.assert_called_once()
+        call_args = landscape_manager._execute.call_args
         assert call_args.kwargs["stage"] == "run"
 
     @pytest.mark.asyncio
     async def test_start_stage_with_profile(self, landscape_manager):
         """Test start_stage with a profile name."""
-        landscape_manager._execute_operation = AsyncMock()
+        landscape_manager._execute = AsyncMock()
 
         await landscape_manager.start_stage(PipelineStage.RUN, profile="production")
 
-        landscape_manager._execute_operation.assert_called_once()
-        call_args = landscape_manager._execute_operation.call_args
+        landscape_manager._execute.assert_called_once()
+        call_args = landscape_manager._execute.call_args
         assert call_args.kwargs["stage"] == "run"
         assert call_args.kwargs["profile"] == "production"
 
@@ -133,12 +133,12 @@ class TestWorkspaceLandscapeManagerPipeline:
     @pytest.mark.asyncio
     async def test_stop_stage(self, landscape_manager):
         """Test stop_stage."""
-        landscape_manager._execute_operation = AsyncMock()
+        landscape_manager._execute = AsyncMock()
 
         await landscape_manager.stop_stage(PipelineStage.RUN)
 
-        landscape_manager._execute_operation.assert_called_once()
-        call_args = landscape_manager._execute_operation.call_args
+        landscape_manager._execute.assert_called_once()
+        call_args = landscape_manager._execute.call_args
         assert call_args.kwargs["stage"] == "run"
 
     @pytest.mark.asyncio
@@ -154,7 +154,7 @@ class TestWorkspaceLandscapeManagerPipeline:
                 )
             ]
         )
-        landscape_manager._execute_operation = AsyncMock(return_value=mock_status)
+        landscape_manager._execute = AsyncMock(return_value=mock_status)
 
         result = await landscape_manager.get_stage_status(PipelineStage.RUN)
 
@@ -174,7 +174,7 @@ class TestWorkspaceLandscapeManagerPipeline:
                 )
             ]
         )
-        landscape_manager._execute_operation = AsyncMock(return_value=mock_status)
+        landscape_manager._execute = AsyncMock(return_value=mock_status)
 
         result = await landscape_manager.wait_for_stage(PipelineStage.PREPARE)
 
@@ -205,7 +205,7 @@ class TestWorkspaceLandscapeManagerPipeline:
             ]
         )
 
-        landscape_manager._execute_operation = AsyncMock(
+        landscape_manager._execute = AsyncMock(
             side_effect=[running_status, running_status, success_status]
         )
 
@@ -214,7 +214,7 @@ class TestWorkspaceLandscapeManagerPipeline:
         )
 
         assert result[0].state == PipelineState.SUCCESS
-        assert landscape_manager._execute_operation.call_count == 3
+        assert landscape_manager._execute.call_count == 3
 
     @pytest.mark.asyncio
     async def test_wait_for_stage_timeout(self, landscape_manager):
@@ -229,7 +229,7 @@ class TestWorkspaceLandscapeManagerPipeline:
                 )
             ]
         )
-        landscape_manager._execute_operation = AsyncMock(return_value=running_status)
+        landscape_manager._execute = AsyncMock(return_value=running_status)
 
         with pytest.raises(TimeoutError, match="did not complete"):
             await landscape_manager.wait_for_stage(

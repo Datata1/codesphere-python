@@ -1,18 +1,35 @@
+from collections.abc import Mapping
 from typing import Any, Generic, Literal, TypeVar
 
 import yaml
-from pydantic import BaseModel, ConfigDict, RootModel
+from pydantic import BaseModel, ConfigDict, PrivateAttr, RootModel
 from pydantic.alias_generators import to_camel
 
 from ..http_client import APIHttpClient
-from .handler import _APIOperationExecutor
+from .handler import RequestData, execute_operation
+from .operations import APIOperation
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
+ResponseT = TypeVar("ResponseT")
 
 
-class ResourceBase(_APIOperationExecutor):
+class ResourceBase:
+    """Base for resource and manager classes bound to an HTTP client."""
+
     def __init__(self, http_client: APIHttpClient):
         self._http_client = http_client
+
+    async def _execute(
+        self,
+        op: APIOperation[ResponseT],
+        *,
+        data: RequestData | None = None,
+        params: Mapping[str, Any] | None = None,
+        **path_params: Any,
+    ) -> ResponseT:
+        return await execute_operation(
+            self._http_client, op, data=data, params=params, path_params=path_params
+        )
 
 
 class CamelModel(BaseModel):
@@ -72,6 +89,36 @@ class CamelModel(BaseModel):
         )
         return yaml.safe_dump(
             data, default_flow_style=False, allow_unicode=True, sort_keys=False
+        )
+
+
+class BoundModel(CamelModel):
+    """API entity that carries the HTTP client it was fetched with.
+
+    Instances returned by the SDK get their client attached automatically,
+    which lets entity methods (e.g. ``workspace.delete()``) make further
+    API calls.
+    """
+
+    _http_client: APIHttpClient | None = PrivateAttr(default=None)
+
+    def _client(self) -> APIHttpClient:
+        if self._http_client is None or not hasattr(self._http_client, "request"):
+            raise RuntimeError(
+                "Cannot access resource on a detached model. HTTP client missing."
+            )
+        return self._http_client
+
+    async def _execute(
+        self,
+        op: APIOperation[ResponseT],
+        *,
+        data: RequestData | None = None,
+        params: Mapping[str, Any] | None = None,
+        **path_params: Any,
+    ) -> ResponseT:
+        return await execute_operation(
+            self._client(), op, data=data, params=params, path_params=path_params
         )
 
 

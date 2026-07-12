@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from ....core.handler import _APIOperationExecutor
+from ....core.base import ResourceBase
 from ....http_client import APIHttpClient
 from .operations import (
     _GET_HEAD_OP,
@@ -15,16 +15,16 @@ from .schema import GitHead
 log = logging.getLogger(__name__)
 
 
-class WorkspaceGitManager(_APIOperationExecutor):
+class WorkspaceGitManager(ResourceBase):
     """Manager for git operations on a workspace."""
 
     def __init__(self, http_client: APIHttpClient, workspace_id: int):
-        self._http_client = http_client
+        super().__init__(http_client)
         self._workspace_id = workspace_id
         self.id = workspace_id
 
     async def get_head(self) -> GitHead:
-        return await self._execute_operation(_GET_HEAD_OP)
+        return await self._execute(_GET_HEAD_OP, id=self.id)
 
     async def pull(
         self,
@@ -32,10 +32,13 @@ class WorkspaceGitManager(_APIOperationExecutor):
         branch: str | None = None,
     ) -> None:
         if remote is not None and branch is not None:
-            await self._execute_operation(
-                _PULL_WITH_REMOTE_AND_BRANCH_OP, remote=remote, branch=branch
+            await self._execute(
+                _PULL_WITH_REMOTE_AND_BRANCH_OP,
+                id=self.id,
+                remote=remote,
+                branch=branch,
             )
         elif remote is not None:
-            await self._execute_operation(_PULL_WITH_REMOTE_OP, remote=remote)
+            await self._execute(_PULL_WITH_REMOTE_OP, id=self.id, remote=remote)
         else:
-            await self._execute_operation(_PULL_OP)
+            await self._execute(_PULL_OP, id=self.id)

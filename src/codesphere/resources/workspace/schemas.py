@@ -4,8 +4,7 @@ import asyncio
 import logging
 from functools import cached_property
 
-from ...core import _APIOperationExecutor
-from ...core.base import CamelModel
+from ...core.base import BoundModel, CamelModel
 from ...utils import update_model_fields
 from .envVars import EnvVar, WorkspaceEnvVarManager
 from .git import WorkspaceGitManager
@@ -75,22 +74,22 @@ class WorkspaceStatus(CamelModel):
     is_running: bool
 
 
-class Workspace(WorkspaceBase, _APIOperationExecutor):
+class Workspace(WorkspaceBase, BoundModel):
     async def update(self, data: WorkspaceUpdate) -> None:
         from .operations import _UPDATE_OP
 
-        await self._execute_operation(_UPDATE_OP, data=data)
+        await self._execute(_UPDATE_OP, id=self.id, data=data)
         update_model_fields(target=self, source=data)
 
     async def delete(self) -> None:
         from .operations import _DELETE_OP
 
-        await self._execute_operation(_DELETE_OP)
+        await self._execute(_DELETE_OP, id=self.id)
 
     async def get_status(self) -> WorkspaceStatus:
         from .operations import _GET_STATUS_OP
 
-        return await self._execute_operation(_GET_STATUS_OP)
+        return await self._execute(_GET_STATUS_OP, id=self.id)
 
     async def wait_until_running(
         self,
@@ -126,24 +125,21 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
         from .operations import _EXECUTE_COMMAND_OP
 
         command_data = CommandInput(command=command, env=env)
-        return await self._execute_operation(_EXECUTE_COMMAND_OP, data=command_data)
+        return await self._execute(_EXECUTE_COMMAND_OP, id=self.id, data=command_data)
 
     @cached_property
     def env_vars(self) -> WorkspaceEnvVarManager:
-        http_client = self.validate_http_client()
-        return WorkspaceEnvVarManager(http_client, workspace_id=self.id)
+        return WorkspaceEnvVarManager(self._client(), workspace_id=self.id)
 
     @cached_property
     def landscape(self) -> WorkspaceLandscapeManager:
         """Manager for landscape operations (Multi Server Deployments)."""
-        http_client = self.validate_http_client()
-        return WorkspaceLandscapeManager(http_client, workspace_id=self.id)
+        return WorkspaceLandscapeManager(self._client(), workspace_id=self.id)
 
     @cached_property
     def git(self) -> WorkspaceGitManager:
         """Manager for git operations (head, pull)."""
-        http_client = self.validate_http_client()
-        return WorkspaceGitManager(http_client, workspace_id=self.id)
+        return WorkspaceGitManager(self._client(), workspace_id=self.id)
 
     @cached_property
     def logs(self) -> WorkspaceLogManager:
@@ -162,5 +158,4 @@ class Workspace(WorkspaceBase, _APIOperationExecutor):
             entries = await workspace.logs.collect(stage="test", step=1)
             ```
         """
-        http_client = self.validate_http_client()
-        return WorkspaceLogManager(http_client, workspace_id=self.id)
+        return WorkspaceLogManager(self._client(), workspace_id=self.id)
