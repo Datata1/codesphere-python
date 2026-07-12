@@ -1,6 +1,7 @@
 import logging
+from contextlib import AbstractAsyncContextManager
 from types import TracebackType
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from pydantic import SecretStr
@@ -37,6 +38,24 @@ class APIHttpClient:
                 "or call 'await sdk.open()' before making requests."
             )
         return self._client
+
+    @property
+    def timeout(self) -> httpx.Timeout:
+        """The configured request timeouts."""
+        return self._timeout_config
+
+    @property
+    def stream_timeout(self) -> httpx.Timeout:
+        """Timeouts for long-lived streams: configured connect, unbounded read."""
+        # httpx.Timeout attributes are untyped upstream; connect is float | None
+        connect = cast("float | None", self._timeout_config.connect)
+        return httpx.Timeout(connect, read=None)
+
+    def stream(
+        self, method: str, endpoint: str, **kwargs: Any
+    ) -> AbstractAsyncContextManager[httpx.Response]:
+        """Open a streaming request (e.g. SSE) on the underlying client."""
+        return self._get_client().stream(method, endpoint, **kwargs)
 
     async def open(self) -> None:
         if not self._client:

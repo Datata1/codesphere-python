@@ -3,13 +3,17 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import warnings
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
 from ....core.base import WorkspaceScopedResource
 from ....core.operations import StreamOperation
 from ....exceptions import APIError, ValidationError, raise_for_status
+from ....http_client import APIHttpClient
 from .operations import (
     _STREAM_REPLICA_LOGS_OP,
     _STREAM_SERVER_LOGS_OP,
@@ -19,31 +23,83 @@ from .schemas import LogEntry, LogProblem, LogStage
 
 log = logging.getLogger(__name__)
 
+# SSE event names that terminate a stream.
+_STREAM_END_EVENTS = frozenset({"end", "close", "done", "complete"})
+
+
+@dataclass(frozen=True, slots=True)
+class StageTarget:
+    """Logs of a pipeline stage (prepare/test/run)."""
+
+    stage: LogStage | str
+    step: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class ServerTarget:
+    """Run logs of a specific server in a Multi Server Deployment."""
+
+    step: int
+    server: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReplicaTarget:
+    """Run logs of a specific replica."""
+
+    step: int
+    replica: str
+
+
+type LogTarget = StageTarget | ServerTarget | ReplicaTarget
+
+
+def _resolve_target(
+    target: LogTarget,
+) -> tuple[StreamOperation[LogEntry], dict[str, Any]]:
+    match target:
+        case StageTarget(stage=stage, step=step):
+            stage_value = stage.value if isinstance(stage, LogStage) else stage
+            return _STREAM_STAGE_LOGS_OP, {"stage": stage_value, "step": step}
+        case ServerTarget(step=step, server=server):
+            return _STREAM_SERVER_LOGS_OP, {"step": step, "server": server}
+        case ReplicaTarget(step=step, replica=replica):
+            return _STREAM_REPLICA_LOGS_OP, {"step": step, "replica": replica}
+    raise TypeError(f"Unsupported log target: {target!r}")
+
+
+def _deprecated(old: str, new: str) -> None:
+    warnings.warn(
+        f"'{old}' is deprecated; use '{new}' instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
 
 class LogStream:
     """Async context manager for streaming logs via SSE."""
 
     def __init__(
         self,
-        client: httpx.AsyncClient,
+        http_client: APIHttpClient,
         endpoint: str,
         entry_model: type[LogEntry],
         timeout: float | None = None,
     ):
-        self._client = client
+        self._http_client = http_client
         self._endpoint = endpoint
         self._entry_model = entry_model
         self._timeout = timeout
         self._response: httpx.Response | None = None
-        self._stream_context = None
+        self._stream_context: Any = None
 
     async def __aenter__(self) -> LogStream:
         headers = {"Accept": "text/event-stream"}
-        self._stream_context = self._client.stream(
+        self._stream_context = self._http_client.stream(
             "GET",
             self._endpoint,
             headers=headers,
-            timeout=httpx.Timeout(5.0, read=None),
+            timeout=self._http_client.stream_timeout,
         )
         self._response = await self._stream_context.__aenter__()
 
@@ -86,7 +142,7 @@ class LogStream:
                 if event_type and data_buffer:
                     data_str = "\n".join(data_buffer)
 
-                    if event_type in ("end", "close", "done", "complete"):
+                    if event_type in _STREAM_END_EVENTS:
                         return
 
                     if event_type == "problem":
@@ -95,7 +151,7 @@ class LogStream:
                         for entry in self._parse_data(data_str):
                             yield entry
 
-                elif event_type in ("end", "close", "done", "complete"):
+                elif event_type in _STREAM_END_EVENTS:
                     return
 
                 event_type = None
@@ -145,104 +201,50 @@ class LogStream:
 
 
 class WorkspaceLogManager(WorkspaceScopedResource):
-    """Manager for streaming workspace logs via SSE."""
+    """Manager for streaming workspace logs via SSE.
 
-    def _build_endpoint(self, operation: StreamOperation, **kwargs) -> str:
+    The unified API takes a :data:`LogTarget`:
+
+    ```python
+    async for entry in workspace.logs.stream(StageTarget(LogStage.RUN, step=1)):
+        ...
+    entries = await workspace.logs.collect(ServerTarget(step=1, server="web"))
+    ```
+    """
+
+    def _build_endpoint(self, operation: StreamOperation, **kwargs: Any) -> str:
         return operation.endpoint_template.format(id=self.workspace_id, **kwargs)
 
-    def _open_stream(
-        self,
-        operation: StreamOperation,
-        timeout: float | None = None,
-        **kwargs,
-    ) -> LogStream:
-        endpoint = self._build_endpoint(operation, **kwargs)
-        return LogStream(
-            client=self._http_client._get_client(),
-            endpoint=endpoint,
-            entry_model=operation.entry_model,
-            timeout=timeout,
-        )
-
-    def open_stream(
-        self,
-        stage: LogStage | str,
-        step: int,
-        timeout: float | None = None,
-    ) -> LogStream:
-        """Open a log stream as an async context manager."""
-        if isinstance(stage, LogStage):
-            stage = stage.value
-        return self._open_stream(
-            _STREAM_STAGE_LOGS_OP, timeout=timeout, stage=stage, step=step
-        )
-
-    def open_server_stream(
-        self,
-        step: int,
-        server: str,
-        timeout: float | None = None,
-    ) -> LogStream:
-        """Open a server log stream as an async context manager."""
-        return self._open_stream(
-            _STREAM_SERVER_LOGS_OP, timeout=timeout, step=step, server=server
-        )
-
-    def open_replica_stream(
-        self,
-        step: int,
-        replica: str,
-        timeout: float | None = None,
-    ) -> LogStream:
-        """Open a replica log stream as an async context manager."""
-        return self._open_stream(
-            _STREAM_REPLICA_LOGS_OP, timeout=timeout, step=step, replica=replica
-        )
+    def open(self, target: LogTarget, timeout: float | None = None) -> LogStream:
+        """Open a log stream for ``target`` as an async context manager."""
+        op, params = _resolve_target(target)
+        endpoint = self._build_endpoint(op, **params)
+        return LogStream(self._http_client, endpoint, op.entry_model, timeout=timeout)
 
     async def stream(
         self,
-        stage: LogStage | str,
-        step: int,
+        target: LogTarget | LogStage | str,
+        step: int | None = None,
         timeout: float | None = 30.0,
     ) -> AsyncIterator[LogEntry]:
-        """Stream logs for a given stage and step."""
-        async with self.open_stream(stage, step, timeout) as stream:
-            async for entry in stream:
-                yield entry
-
-    async def stream_server(
-        self,
-        step: int,
-        server: str,
-        timeout: float | None = None,
-    ) -> AsyncIterator[LogEntry]:
-        """Stream run logs for a specific server."""
-        async with self.open_server_stream(step, server, timeout) as stream:
-            async for entry in stream:
-                yield entry
-
-    async def stream_replica(
-        self,
-        step: int,
-        replica: str,
-        timeout: float | None = None,
-    ) -> AsyncIterator[LogEntry]:
-        """Stream run logs for a specific replica."""
-        async with self.open_replica_stream(step, replica, timeout) as stream:
+        """Stream log entries for ``target`` as they arrive."""
+        resolved = self._coerce_target(target, step, "stream")
+        async with self.open(resolved, timeout) as stream:
             async for entry in stream:
                 yield entry
 
     async def collect(
         self,
-        stage: LogStage | str,
-        step: int,
+        target: LogTarget | LogStage | str,
+        step: int | None = None,
         max_entries: int | None = None,
         timeout: float | None = 30.0,
     ) -> list[LogEntry]:
-        """Collect all logs for a stage and step into a list."""
+        """Collect log entries for ``target`` into a list."""
+        resolved = self._coerce_target(target, step, "collect")
         entries: list[LogEntry] = []
         try:
-            async with self.open_stream(stage, step, timeout) as stream:
+            async with self.open(resolved, timeout) as stream:
                 async for entry in stream:
                     entries.append(entry)
                     if max_entries and len(entries) >= max_entries:
@@ -250,6 +252,60 @@ class WorkspaceLogManager(WorkspaceScopedResource):
         except TimeoutError:
             pass
         return entries
+
+    @staticmethod
+    def _coerce_target(
+        target: LogTarget | LogStage | str, step: int | None, method: str
+    ) -> LogTarget:
+        if isinstance(target, StageTarget | ServerTarget | ReplicaTarget):
+            return target
+        _deprecated(f"{method}(stage, step)", f"{method}(StageTarget(stage, step))")
+        return StageTarget(stage=target, step=step if step is not None else 0)
+
+    # ------------------------------------------------------------------
+    # Deprecated aliases (kept for backwards compatibility)
+    # ------------------------------------------------------------------
+
+    def open_stream(
+        self, stage: LogStage | str, step: int, timeout: float | None = None
+    ) -> LogStream:
+        """Deprecated: use :meth:`open` with a :class:`StageTarget`."""
+        _deprecated("open_stream", "open(StageTarget(...))")
+        return self.open(StageTarget(stage=stage, step=step), timeout=timeout)
+
+    def open_server_stream(
+        self, step: int, server: str, timeout: float | None = None
+    ) -> LogStream:
+        """Deprecated: use :meth:`open` with a :class:`ServerTarget`."""
+        _deprecated("open_server_stream", "open(ServerTarget(...))")
+        return self.open(ServerTarget(step=step, server=server), timeout=timeout)
+
+    def open_replica_stream(
+        self, step: int, replica: str, timeout: float | None = None
+    ) -> LogStream:
+        """Deprecated: use :meth:`open` with a :class:`ReplicaTarget`."""
+        _deprecated("open_replica_stream", "open(ReplicaTarget(...))")
+        return self.open(ReplicaTarget(step=step, replica=replica), timeout=timeout)
+
+    async def stream_server(
+        self, step: int, server: str, timeout: float | None = None
+    ) -> AsyncIterator[LogEntry]:
+        """Deprecated: use :meth:`stream` with a :class:`ServerTarget`."""
+        _deprecated("stream_server", "stream(ServerTarget(...))")
+        async for entry in self.stream(
+            ServerTarget(step=step, server=server), timeout=timeout
+        ):
+            yield entry
+
+    async def stream_replica(
+        self, step: int, replica: str, timeout: float | None = None
+    ) -> AsyncIterator[LogEntry]:
+        """Deprecated: use :meth:`stream` with a :class:`ReplicaTarget`."""
+        _deprecated("stream_replica", "stream(ReplicaTarget(...))")
+        async for entry in self.stream(
+            ReplicaTarget(step=step, replica=replica), timeout=timeout
+        ):
+            yield entry
 
     async def collect_server(
         self,
@@ -258,17 +314,13 @@ class WorkspaceLogManager(WorkspaceScopedResource):
         max_entries: int | None = None,
         timeout: float | None = 30.0,
     ) -> list[LogEntry]:
-        """Collect all logs for a server into a list."""
-        entries: list[LogEntry] = []
-        try:
-            async with self.open_server_stream(step, server, timeout) as stream:
-                async for entry in stream:
-                    entries.append(entry)
-                    if max_entries and len(entries) >= max_entries:
-                        break
-        except TimeoutError:
-            pass
-        return entries
+        """Deprecated: use :meth:`collect` with a :class:`ServerTarget`."""
+        _deprecated("collect_server", "collect(ServerTarget(...))")
+        return await self.collect(
+            ServerTarget(step=step, server=server),
+            max_entries=max_entries,
+            timeout=timeout,
+        )
 
     async def collect_replica(
         self,
@@ -277,14 +329,10 @@ class WorkspaceLogManager(WorkspaceScopedResource):
         max_entries: int | None = None,
         timeout: float | None = 30.0,
     ) -> list[LogEntry]:
-        """Collect all logs for a replica into a list."""
-        entries: list[LogEntry] = []
-        try:
-            async with self.open_replica_stream(step, replica, timeout) as stream:
-                async for entry in stream:
-                    entries.append(entry)
-                    if max_entries and len(entries) >= max_entries:
-                        break
-        except TimeoutError:
-            pass
-        return entries
+        """Deprecated: use :meth:`collect` with a :class:`ReplicaTarget`."""
+        _deprecated("collect_replica", "collect(ReplicaTarget(...))")
+        return await self.collect(
+            ReplicaTarget(step=step, replica=replica),
+            max_entries=max_entries,
+            timeout=timeout,
+        )

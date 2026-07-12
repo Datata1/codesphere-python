@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import re
 from typing import TYPE_CHECKING
@@ -75,16 +76,18 @@ class WorkspaceLandscapeManager(WorkspaceScopedResource):
         yaml_content = config.to_yaml() if isinstance(config, ProfileConfig) else config
 
         body = yaml_content if yaml_content.endswith("\n") else yaml_content + "\n"
-        await self._run_command(
-            f"cat > {filename} << 'PROFILE_EOF'\n{body}PROFILE_EOF\n"
-        )
+        # Transport the content base64-encoded: the base64 alphabet is inert
+        # inside single quotes, so arbitrary YAML cannot break out of the
+        # shell command (the filename is regex-validated above).
+        encoded = base64.b64encode(body.encode("utf-8")).decode("ascii")
+        await self._run_command(f"printf '%s' '{encoded}' | base64 -d > '{filename}'")
 
     async def get_profile(self, name: str) -> str:
-        result = await self._run_command(f"cat {_profile_filename(name)}")
+        result = await self._run_command(f"cat '{_profile_filename(name)}'")
         return result.output
 
     async def delete_profile(self, name: str) -> None:
-        await self._run_command(f"rm -f {_profile_filename(name)}")
+        await self._run_command(f"rm -f '{_profile_filename(name)}'")
 
     async def deploy(self, profile: str | None = None) -> None:
         if profile is not None:
