@@ -1,7 +1,8 @@
 from types import NoneType
 
+from ....core.base import ResourceList
 from ....core.operations import APIOperation
-from .schemas import PipelineStatusList
+from .schemas import PipelineStatus
 
 _DEPLOY_OP = APIOperation(
     method="POST",
@@ -48,5 +49,5 @@ _STOP_PIPELINE_STAGE_OP = APIOperation(
 _GET_PIPELINE_STATUS_OP = APIOperation(
     method="GET",
     endpoint_template="/workspaces/{id}/pipeline/{stage}",
-    response_model=PipelineStatusList,
+    response_model=ResourceList[PipelineStatus],
 )

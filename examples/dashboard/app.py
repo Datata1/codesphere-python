@@ -35,7 +35,7 @@ from codesphere.resources.workspace import (  # noqa: E402
     WorkspaceCreate,
     WorkspaceUpdate,
 )
-from codesphere.resources.workspace.envVars import EnvVar  # noqa: E402
+from codesphere.resources.workspace.env_vars import EnvVar  # noqa: E402
 from codesphere.resources.workspace.landscape import (  # noqa: E402
     PipelineStage,
     ProfileBuilder,

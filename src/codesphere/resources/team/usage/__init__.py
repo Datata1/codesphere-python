@@ -1,6 +1,6 @@
 """Team usage history resources."""
 
-from .manager import TeamUsageManager
+from .resources import TeamUsageManager
 from .schemas import (
     LandscapeServiceEvent,
     LandscapeServiceSummary,

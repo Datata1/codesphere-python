@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Self, TypeVar
 
 from pydantic import Field
 
@@ -42,88 +42,65 @@ ItemT = TypeVar("ItemT")
 
 class PaginatedResponse(CamelModel, Generic[ItemT]):
     total_items: int
-    limit: int | None = Field(default=25)
-    offset: int | None = Field(default=0)
+    limit: int = 25
+    offset: int = 0
     begin_date: datetime
     end_date: datetime
 
+    _refresh_op: Callable[..., Awaitable[Any]] | None = None
+
     @property
     def has_next_page(self) -> bool:
-        current_limit = self.limit or 25
-        current_offset = self.offset or 0
-        return (current_offset + current_limit) < self.total_items
+        return (self.offset + self.limit) < self.total_items
 
     @property
     def has_prev_page(self) -> bool:
-        return (self.offset or 0) > 0
+        return self.offset > 0
 
     @property
     def current_page(self) -> int:
-        current_limit = self.limit or 25
-        current_offset = self.offset or 0
-        return (current_offset // current_limit) + 1
+        return (self.offset // self.limit) + 1
 
     @property
     def total_pages(self) -> int:
-        current_limit = self.limit or 25
         if self.total_items == 0:
             return 1
-        return (self.total_items + current_limit - 1) // current_limit
+        return (self.total_items + self.limit - 1) // self.limit
+
+    async def refresh(self) -> Self:
+        """Re-fetch this page with the same query parameters, in place."""
+        if self._refresh_op is None:
+            raise RuntimeError(
+                "Refresh operation not available. Use manager methods instead."
+            )
+        result = await self._refresh_op(
+            params={
+                "beginDate": self.begin_date.isoformat(),
+                "endDate": self.end_date.isoformat(),
+                "limit": self.limit,
+                "offset": self.offset,
+            }
+        )
+        for field_name in result.model_fields_set:
+            setattr(self, field_name, getattr(result, field_name))
+        return self
 
 
 class UsageSummaryResponse(PaginatedResponse[LandscapeServiceSummary]):
     summary: list[LandscapeServiceSummary] = Field(default_factory=list)
-    _refresh_op: Callable[..., Awaitable[Any]] | None = None
     _team_id: int | None = None
 
     @property
     def items(self) -> list[LandscapeServiceSummary]:
         return self.summary
 
-    async def refresh(self) -> UsageSummaryResponse:
-        if self._refresh_op is None:
-            raise RuntimeError(
-                "Refresh operation not available. Use manager methods instead."
-            )
-        result = await self._refresh_op(
-            params={
-                "beginDate": self.begin_date.isoformat(),
-                "endDate": self.end_date.isoformat(),
-                "limit": self.limit,
-                "offset": self.offset,
-            }
-        )
-        for field_name in result.model_fields_set:
-            if field_name not in ("_refresh_op", "_team_id"):
-                setattr(self, field_name, getattr(result, field_name))
-        return self
-
 
 class UsageEventsResponse(PaginatedResponse[LandscapeServiceEvent]):
     events: list[LandscapeServiceEvent] = Field(default_factory=list)
 
-    _refresh_op: Callable[..., Awaitable[Any]] | None = None
     _team_id: int | None = None
     _resource_id: str | None = None
 
     @property
     def items(self) -> list[LandscapeServiceEvent]:
         return self.events
-
-    async def refresh(self) -> UsageEventsResponse:
-        if self._refresh_op is None:
-            raise RuntimeError(
-                "Refresh operation not available. Use manager methods instead."
-            )
-        result = await self._refresh_op(
-            params={
-                "beginDate": self.begin_date.isoformat(),
-                "endDate": self.end_date.isoformat(),
-                "limit": self.limit,
-                "offset": self.offset,
-            }
-        )
-        for field_name in result.model_fields_set:
-            if field_name not in ("_refresh_op", "_team_id", "_resource_id"):
-                setattr(self, field_name, getattr(result, field_name))
-        return self

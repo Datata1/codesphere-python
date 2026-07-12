@@ -2,8 +2,7 @@ from types import NoneType
 
 from ....core.base import ResourceList
 from ....core.operations import APIOperation
-from .resources import Domain
-from .schemas import CustomDomainConfig, DomainVerificationStatus
+from .schemas import CustomDomainConfig, Domain, DomainVerificationStatus
 
 _LIST_OP = APIOperation(
     method="GET",

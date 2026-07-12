@@ -10,8 +10,8 @@ from codesphere.resources.workspace.landscape import (
     PipelineStatus,
     PipelineStatusList,
     StepStatus,
+    WorkspaceLandscapeManager,
 )
-from codesphere.resources.workspace.landscape.models import WorkspaceLandscapeManager
 
 
 class TestPipelineSchemas:
@@ -243,3 +243,16 @@ class TestWorkspaceLandscapeManagerPipeline:
             await landscape_manager.wait_for_stage(
                 PipelineStage.PREPARE, poll_interval=0
             )
+
+
+class TestPipelineStatusListAlias:
+    """PipelineStatusList is now an alias of the shared ResourceList."""
+
+    def test_alias_is_resource_list(self):
+        from codesphere.core.base import ResourceList
+        from codesphere.resources.workspace.landscape import (
+            PipelineStatus,
+            PipelineStatusList,
+        )
+
+        assert PipelineStatusList is ResourceList[PipelineStatus]

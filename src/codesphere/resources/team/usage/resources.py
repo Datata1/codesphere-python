@@ -4,8 +4,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from functools import partial
 
-from ....core.base import ResourceBase
-from ....http_client import APIHttpClient
+from ....core.base import TeamScopedResource
 from .operations import _GET_LANDSCAPE_EVENTS_OP, _GET_LANDSCAPE_SUMMARY_OP
 from .schemas import (
     LandscapeServiceEvent,
@@ -15,7 +14,12 @@ from .schemas import (
 )
 
 
-class TeamUsageManager(ResourceBase):
+def _clamp_page_size(value: int) -> int:
+    """The usage API accepts page sizes between 1 and 100."""
+    return min(max(1, value), 100)
+
+
+class TeamUsageManager(TeamScopedResource):
     """Manager for team usage history operations.
 
     Provides access to landscape service usage summaries and events with
@@ -44,10 +48,6 @@ class TeamUsageManager(ResourceBase):
         ```
     """
 
-    def __init__(self, http_client: APIHttpClient, team_id: int):
-        super().__init__(http_client)
-        self.team_id = team_id
-
     async def get_landscape_summary(
         self,
         begin_date: datetime | str,
@@ -62,7 +62,7 @@ class TeamUsageManager(ResourceBase):
             "endDate": end_date.isoformat()
             if isinstance(end_date, datetime)
             else end_date,
-            "limit": min(max(1, limit), 100),
+            "limit": _clamp_page_size(limit),
             "offset": max(0, offset),
         }
         result = await self._execute(
@@ -83,7 +83,7 @@ class TeamUsageManager(ResourceBase):
         page_size: int = 100,
     ) -> AsyncIterator[LandscapeServiceSummary]:
         offset = 0
-        page_size = min(max(1, page_size), 100)
+        page_size = _clamp_page_size(page_size)
 
         while True:
             response = await self.get_landscape_summary(
@@ -116,7 +116,7 @@ class TeamUsageManager(ResourceBase):
             "endDate": end_date.isoformat()
             if isinstance(end_date, datetime)
             else end_date,
-            "limit": min(max(1, limit), 100),
+            "limit": _clamp_page_size(limit),
             "offset": max(0, offset),
         }
         result = await self._execute(
@@ -145,7 +145,7 @@ class TeamUsageManager(ResourceBase):
         page_size: int = 100,
     ) -> AsyncIterator[LandscapeServiceEvent]:
         offset = 0
-        page_size = min(max(1, page_size), 100)
+        page_size = _clamp_page_size(page_size)
 
         while True:
             response = await self.get_landscape_events(

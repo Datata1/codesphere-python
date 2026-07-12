@@ -3,8 +3,8 @@ from __future__ import annotations
 from functools import cached_property
 
 from ...core.base import BoundModel, CamelModel
-from .domain.manager import TeamDomainManager
-from .usage.manager import TeamUsageManager
+from .domain.resources import TeamDomainManager
+from .usage.resources import TeamUsageManager
 
 
 class TeamCreate(CamelModel):

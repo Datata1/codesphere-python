@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from codesphere.resources.team.usage.manager import TeamUsageManager
+from codesphere.resources.team.usage import TeamUsageManager
 from codesphere.resources.team.usage.schemas import (
     LandscapeServiceEvent,
     LandscapeServiceSummary,

@@ -7,9 +7,9 @@ from collections.abc import AsyncIterator
 
 import httpx
 
+from ....core.base import WorkspaceScopedResource
 from ....core.operations import StreamOperation
 from ....exceptions import APIError, ValidationError, raise_for_status
-from ....http_client import APIHttpClient
 from .operations import (
     _STREAM_REPLICA_LOGS_OP,
     _STREAM_SERVER_LOGS_OP,
@@ -144,16 +144,11 @@ class LogStream:
             raise APIError(message=f"Invalid problem event: {data_str}") from e
 
 
-class WorkspaceLogManager:
+class WorkspaceLogManager(WorkspaceScopedResource):
     """Manager for streaming workspace logs via SSE."""
 
-    def __init__(self, http_client: APIHttpClient, workspace_id: int):
-        self._http_client = http_client
-        self._workspace_id = workspace_id
-        self.id = workspace_id
-
     def _build_endpoint(self, operation: StreamOperation, **kwargs) -> str:
-        return operation.endpoint_template.format(id=self._workspace_id, **kwargs)
+        return operation.endpoint_template.format(id=self.workspace_id, **kwargs)
 
     def _open_stream(
         self,

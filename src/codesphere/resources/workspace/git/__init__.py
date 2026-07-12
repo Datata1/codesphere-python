@@ -1,4 +1,4 @@
-from .models import WorkspaceGitManager
-from .schema import GitHead
+from .resources import WorkspaceGitManager
+from .schemas import GitHead
 
 __all__ = ["GitHead", "WorkspaceGitManager"]

@@ -1,9 +1,10 @@
-from .domain.resources import (
+from .domain import (
     CustomDomainConfig,
     Domain,
     DomainBase,
     DomainRouting,
     DomainVerificationStatus,
+    TeamDomainManager,
 )
 from .resources import TeamsResource
 from .schemas import Team, TeamBase, TeamCreate
@@ -30,6 +31,7 @@ __all__ = [
     "Team",
     "TeamBase",
     "TeamCreate",
+    "TeamDomainManager",
     "TeamUsageManager",
     "TeamsResource",
     "UsageEventsResponse",
