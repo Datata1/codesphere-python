@@ -85,15 +85,16 @@ skips = ["B101"]
 
 [tool.ty.src]
 exclude = [
-    # --- Type-check ratchet -------------------------------------------------
-    # Each exclusion below is temporary and owned by a refactor ticket in
-    # plans/refactor/. When a ticket lands, its paths MUST be removed here.
-    # Do not add new exclusions without a ticket reference.
-    "tests/",                         # ticket 06 (respx-based test suite)
-    # --- Permanent exclusions -----------------------------------------------
+    # The refactor-ticket ratchet (plans/refactor/) is fully resolved: src and
+    # tests are type-checked. Do not add exclusions without a ticket reference.
     # Examples have their own dependencies (e.g. fastapi) not installed in
     # this project's environment.
     "examples/",
+]
+
+[dependency-groups]
+dev = [
+    "respx>=0.23.1",
 ]
 
 [project.urls]

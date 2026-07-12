@@ -447,6 +447,8 @@ class TestProfileBuilder:
 
         service = profile.run["api"]
         assert isinstance(service, ReactiveServiceConfig)
+        assert service.network is not None
+        assert service.network.paths is not None
         assert len(service.network.paths) == 2
         assert service.network.paths[0].path == "/api"
         assert service.network.paths[0].strip_path is True
@@ -703,7 +705,9 @@ class TestProfileCommandHardening:
 
         await manager_with_capture.save_profile("hardened", content)
 
-        command = manager_with_capture._run_command.await_args.args[0]
+        call = manager_with_capture._run_command.await_args
+        assert call is not None
+        command = call.args[0]
         match = re.fullmatch(
             r"printf '%s' '([A-Za-z0-9+/=]*)' \| base64 -d > 'ci\.hardened\.yml'",
             command,
@@ -722,11 +726,15 @@ class TestProfileCommandHardening:
         manager_with_capture._run_command = AsyncMock(return_value=response)
 
         await manager_with_capture.get_profile("prod")
-        command = manager_with_capture._run_command.await_args.args[0]
+        call = manager_with_capture._run_command.await_args
+        assert call is not None
+        command = call.args[0]
         assert command == "cat 'ci.prod.yml'"
 
     @pytest.mark.asyncio
     async def test_delete_profile_quotes_filename(self, manager_with_capture):
         await manager_with_capture.delete_profile("prod")
-        command = manager_with_capture._run_command.await_args.args[0]
+        call = manager_with_capture._run_command.await_args
+        assert call is not None
+        command = call.args[0]
         assert command == "rm -f 'ci.prod.yml'"

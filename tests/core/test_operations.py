@@ -30,7 +30,7 @@ class APIOperationTestCase:
     method: str
     endpoint_template: str
     response_model: type
-    input_model: type | None = None
+    input_model: type[BaseModel] | None = None
 
 
 api_operation_test_cases = [
@@ -141,7 +141,7 @@ class TestAPIOperation:
             response_model=LogEntry,
         )
         with pytest.raises(dataclasses.FrozenInstanceError):
-            op.method = "POST"
+            op.method = "POST"  # ty: ignore[invalid-assignment]
 
 
 class TestStreamOperation:
@@ -159,4 +159,4 @@ class TestStreamOperation:
             entry_model=LogEntry,
         )
         with pytest.raises(dataclasses.FrozenInstanceError):
-            op.endpoint_template = "/other"
+            op.endpoint_template = "/other"  # ty: ignore[invalid-assignment]

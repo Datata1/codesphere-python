@@ -13,6 +13,7 @@ from codesphere.resources.team.usage import (
 )
 from codesphere.resources.workspace import Workspace
 from codesphere.resources.workspace.landscape import ProfileBuilder
+from tests.integration.conftest import skip_test
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
@@ -146,7 +147,7 @@ class TestGetLandscapeEvents:
         )
 
         if summary.total_items == 0:
-            pytest.skip("No usage data available for testing events")
+            skip_test("No usage data available for testing events")
 
         resource_id = summary.items[0].resource_id
 
@@ -175,7 +176,7 @@ class TestGetLandscapeEvents:
         )
 
         if summary.total_items == 0:
-            pytest.skip("No usage data available for testing events")
+            skip_test("No usage data available for testing events")
 
         resource_id = summary.items[0].resource_id
 
@@ -289,7 +290,7 @@ class TestIterAllMethods:
         )
 
         if summary.total_items == 0:
-            pytest.skip("No usage data available for testing event iteration")
+            skip_test("No usage data available for testing event iteration")
 
         resource_id = summary.items[0].resource_id
 

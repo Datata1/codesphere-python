@@ -2,6 +2,7 @@ import contextlib
 import logging
 import os
 from collections.abc import AsyncGenerator
+from typing import NoReturn
 
 import pytest
 from dotenv import load_dotenv
@@ -14,6 +15,20 @@ load_dotenv()
 TEST_WORKSPACE_PREFIX = "sdk-integration-test"
 
 log = logging.getLogger(__name__)
+
+
+def skip_test(reason: str) -> NoReturn:
+    """pytest.skip with the ty suppression funneled through one place.
+
+    ty cannot resolve the decorated signatures of pytest's outcome
+    functions, so the (correct) call below needs a targeted ignore.
+    """
+    pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+
+
+def fail_test(reason: str) -> NoReturn:
+    """pytest.fail counterpart of :func:`skip_test`."""
+    pytest.fail(reason)  # ty: ignore[invalid-argument-type]
 
 
 def pytest_addoption(parser):
@@ -47,7 +62,7 @@ def pytest_collection_modifyitems(config, items):
 def integration_token() -> str:
     token = os.environ.get("CS_TOKEN")
     if not token:
-        pytest.skip("CS_TOKEN environment variable not set")
+        skip_test("CS_TOKEN environment variable not set")
     return token
 
 
@@ -94,7 +109,7 @@ async def test_team_id(
 
     teams = await session_sdk_client.teams.list()
     if not teams:
-        pytest.fail("No teams available for integration testing")
+        fail_test("No teams available for integration testing")
     return teams[0].id
 
 
@@ -108,7 +123,7 @@ async def test_plan_id(session_sdk_client: CodesphereSDK) -> int:
     if micro_plan:
         return micro_plan.id
 
-    pytest.fail("No 'Micro' workspace plan available for testing")
+    fail_test("No 'Micro' workspace plan available for testing")
 
 
 @pytest.fixture(scope="session")
@@ -119,31 +134,31 @@ async def test_workspaces(
 ) -> AsyncGenerator[list[Workspace], None]:
     created_workspaces: list[Workspace] = []
 
-    workspace_configs = [
-        {"name": f"{TEST_WORKSPACE_PREFIX}-1", "git_url": None},
-        {
-            "name": f"{TEST_WORKSPACE_PREFIX}-git",
-            "git_url": "https://github.com/octocat/Hello-World.git",
-        },
+    workspace_configs: list[tuple[str, str | None]] = [
+        (f"{TEST_WORKSPACE_PREFIX}-1", None),
+        (
+            f"{TEST_WORKSPACE_PREFIX}-git",
+            "https://github.com/octocat/Hello-World.git",
+        ),
     ]
 
-    for config in workspace_configs:
+    for ws_name, git_url in workspace_configs:
         payload = WorkspaceCreate(
             team_id=test_team_id,
-            name=config["name"],
+            name=ws_name,
             plan_id=test_plan_id,
-            git_url=config["git_url"],
+            git_url=git_url,
         )
         try:
             workspace = await session_sdk_client.workspaces.create(payload=payload)
             created_workspaces.append(workspace)
             log.info(f"Created test workspace: {workspace.name} (ID: {workspace.id})")
         except Exception as e:
-            log.error(f"Failed to create test workspace {config['name']}: {e}")
+            log.error(f"Failed to create test workspace {ws_name}: {e}")
             for ws in created_workspaces:
                 with contextlib.suppress(Exception):
                     await ws.delete()
-            pytest.fail(f"Failed to create test workspaces: {e}")
+            fail_test(f"Failed to create test workspaces: {e}")
 
     yield created_workspaces
 

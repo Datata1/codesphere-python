@@ -152,6 +152,14 @@ tests/
     └── test_workspaces.py
 ```
 
+### Mocking Policy
+
+Unit tests for request/response behavior mock the **HTTP transport**, not SDK
+internals: use the `mock_api` respx fixture (see `tests/conftest.py`) so URL
+building, headers, body encoding, and response validation run for real. Do
+not mock `_execute` or other SDK-internal methods in new tests — if you need
+a canned API response, register a respx route instead.
+
 ### Unit Tests
 
 Unit tests mock HTTP responses and test SDK logic in isolation. They are fast and don't require API credentials.
