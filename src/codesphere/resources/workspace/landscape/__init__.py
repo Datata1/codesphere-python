@@ -1,4 +1,4 @@
-from .models import WorkspaceLandscapeManager
+from .resources import WorkspaceLandscapeManager
 from .schemas import (
     ManagedServiceBuilder,
     ManagedServiceConfig,

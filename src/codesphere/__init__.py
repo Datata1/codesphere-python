@@ -51,7 +51,7 @@ from .resources.workspace import (
     WorkspaceStatus,
     WorkspaceUpdate,
 )
-from .resources.workspace.envVars import EnvVar
+from .resources.workspace.env_vars import EnvVar
 
 logging.getLogger("codesphere").addHandler(logging.NullHandler())
 

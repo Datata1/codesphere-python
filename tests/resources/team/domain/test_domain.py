@@ -1,6 +1,6 @@
 import pytest
 
-from codesphere.resources.team.domain.manager import TeamDomainManager
+from codesphere.resources.team.domain import TeamDomainManager
 from codesphere.resources.team.domain.resources import Domain
 from codesphere.resources.team.domain.schemas import (
     CustomDomainConfig,

@@ -6,7 +6,7 @@ from functools import cached_property
 
 from ...core.base import BoundModel, CamelModel
 from ...utils import update_model_fields
-from .envVars import EnvVar, WorkspaceEnvVarManager
+from .env_vars import EnvVar, WorkspaceEnvVarManager
 from .git import WorkspaceGitManager
 from .landscape import WorkspaceLandscapeManager
 from .logs import WorkspaceLogManager

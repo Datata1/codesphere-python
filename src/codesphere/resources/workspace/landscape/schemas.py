@@ -4,9 +4,9 @@ from enum import Enum
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field
 
-from ....core.base import CamelModel
+from ....core.base import CamelModel, ResourceList
 
 
 class PipelineStage(str, Enum):
@@ -38,17 +38,8 @@ class PipelineStatus(CamelModel):
     server: str
 
 
-class PipelineStatusList(RootModel[list[PipelineStatus]]):
-    root: list[PipelineStatus]
-
-    def __iter__(self):
-        return iter(self.root)
-
-    def __getitem__(self, item):
-        return self.root[item]
-
-    def __len__(self):
-        return len(self.root)
+# Alias kept for backwards compatibility; ResourceList provides the same API.
+PipelineStatusList = ResourceList[PipelineStatus]
 
 
 class Profile(BaseModel):

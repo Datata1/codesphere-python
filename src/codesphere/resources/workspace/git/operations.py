@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import NoneType
 
 from ....core.operations import APIOperation
-from .schema import GitHead
+from .schemas import GitHead
 
 _GET_HEAD_OP = APIOperation(
     method="GET",

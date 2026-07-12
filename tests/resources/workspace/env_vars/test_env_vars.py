@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from codesphere.resources.workspace.envVars import EnvVar, WorkspaceEnvVarManager
+from codesphere.resources.workspace.env_vars import EnvVar, WorkspaceEnvVarManager
 
 
 @dataclass
@@ -137,3 +137,26 @@ class TestEnvVarModel:
         )
 
         assert "p@ss=word" in env_var.value
+
+    def test_env_var_is_camel_model(self):
+        """EnvVar should derive from CamelModel like every other schema."""
+        from codesphere.core.base import CamelModel
+
+        assert issubclass(EnvVar, CamelModel)
+        env_var = EnvVar(name="DEBUG", value="true")
+        assert env_var.to_dict() == {"name": "DEBUG", "value": "true"}
+
+
+class TestDeprecatedEnvVarsAlias:
+    """The old camelCase module path must keep working with a warning."""
+
+    def test_envvars_import_warns_and_reexports(self):
+        import importlib
+        import sys
+
+        sys.modules.pop("codesphere.resources.workspace.envVars", None)
+        with pytest.warns(DeprecationWarning, match="env_vars"):
+            legacy = importlib.import_module("codesphere.resources.workspace.envVars")
+
+        assert legacy.EnvVar is EnvVar
+        assert legacy.WorkspaceEnvVarManager is WorkspaceEnvVarManager

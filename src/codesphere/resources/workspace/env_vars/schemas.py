@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from ....core.base import CamelModel
 
 
-class EnvVar(BaseModel):
+class EnvVar(CamelModel):
     """Environment variable model."""
 
     name: str

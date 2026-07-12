@@ -1,4 +1,4 @@
-from .models import LogStream, WorkspaceLogManager
+from .resources import LogStream, WorkspaceLogManager
 from .schemas import LogEntry, LogProblem, LogStage
 
 __all__ = [

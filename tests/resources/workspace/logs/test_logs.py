@@ -173,8 +173,7 @@ class TestWorkspaceLogManager:
 
     def test_init(self, log_manager, mock_http_client):
         assert log_manager._http_client == mock_http_client
-        assert log_manager._workspace_id == 123
-        assert log_manager.id == 123
+        assert log_manager.workspace_id == 123
 
     def test_build_endpoint(self, log_manager):
         endpoint = log_manager._build_endpoint(

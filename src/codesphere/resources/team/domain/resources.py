@@ -1,52 +1,30 @@
-from __future__ import annotations
-
-import logging
-
-from ....core.base import BoundModel
-from ....utils import update_model_fields
-from .schemas import (
-    CustomDomainConfig,
-    DomainBase,
-    DomainRouting,
-    DomainVerificationStatus,
-    RoutingMap,
-)
-
-log = logging.getLogger(__name__)
+from ....core.base import TeamScopedResource
+from .operations import _CREATE_OP, _GET_OP, _LIST_OP, _UPDATE_OP, _UPDATE_WS_OP
+from .schemas import CustomDomainConfig, Domain, DomainRouting, RoutingMap
 
 
-class Domain(DomainBase, BoundModel):
-    async def update(self, data: CustomDomainConfig) -> Domain:
-        from .operations import _UPDATE_OP
+class TeamDomainManager(TeamScopedResource):
+    async def list(self) -> list[Domain]:
+        result = await self._execute(_LIST_OP, team_id=self.team_id)
+        return result.root
 
-        response = await self._execute(
-            _UPDATE_OP, team_id=self.team_id, name=self.name, data=data
+    async def get(self, name: str) -> Domain:
+        return await self._execute(_GET_OP, team_id=self.team_id, name=name)
+
+    async def create(self, name: str) -> Domain:
+        return await self._execute(_CREATE_OP, team_id=self.team_id, name=name)
+
+    async def update(self, name: str, config: CustomDomainConfig) -> Domain:
+        return await self._execute(
+            _UPDATE_OP, team_id=self.team_id, name=name, data=config
         )
-        update_model_fields(target=self, source=response)
-        return response
 
     async def update_workspace_connections(
-        self, connections: DomainRouting | RoutingMap
+        self, name: str, connections: DomainRouting | RoutingMap
     ) -> Domain:
-        from .operations import _UPDATE_WS_OP
-
         payload = (
             connections.root if isinstance(connections, DomainRouting) else connections
         )
-        response = await self._execute(
-            _UPDATE_WS_OP, team_id=self.team_id, name=self.name, data=payload
+        return await self._execute(
+            _UPDATE_WS_OP, team_id=self.team_id, name=name, data=payload
         )
-        update_model_fields(target=self, source=response)
-        return response
-
-    async def verify_status(self) -> DomainVerificationStatus:
-        from .operations import _VERIFY_OP
-
-        response = await self._execute(_VERIFY_OP, team_id=self.team_id, name=self.name)
-        update_model_fields(target=self.domain_verification_status, source=response)
-        return response
-
-    async def delete(self) -> None:
-        from .operations import _DELETE_OP
-
-        await self._execute(_DELETE_OP, team_id=self.team_id, name=self.name)

@@ -32,6 +32,22 @@ class ResourceBase:
         )
 
 
+class TeamScopedResource(ResourceBase):
+    """Base for managers operating within one team."""
+
+    def __init__(self, http_client: APIHttpClient, team_id: int):
+        super().__init__(http_client)
+        self.team_id = team_id
+
+
+class WorkspaceScopedResource(ResourceBase):
+    """Base for managers operating within one workspace."""
+
+    def __init__(self, http_client: APIHttpClient, workspace_id: int):
+        super().__init__(http_client)
+        self.workspace_id = workspace_id
+
+
 class CamelModel(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
