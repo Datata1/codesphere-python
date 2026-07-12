@@ -3,6 +3,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+import respx
+
+TEST_BASE_URL = "https://test.local/api"
 
 
 class MockResponseFactory:
@@ -290,3 +293,23 @@ def domain_model_factory(mock_http_client_for_resource, sample_domain_data):
         return domain, mock_client
 
     return _create
+
+
+@pytest.fixture
+def mock_api():
+    """respx router bound to the test base URL.
+
+    Unit tests for request/response behavior mock the HTTP transport with
+    this router instead of patching SDK internals.
+    """
+    with respx.mock(base_url=TEST_BASE_URL, assert_all_called=False) as router:
+        yield router
+
+
+@pytest.fixture
+async def sdk(mock_api):
+    """An opened CodesphereSDK wired to the respx-mocked transport."""
+    from codesphere import CodesphereSDK
+
+    async with CodesphereSDK(token="test-token", base_url=TEST_BASE_URL) as client:
+        yield client

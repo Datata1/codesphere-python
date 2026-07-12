@@ -52,7 +52,7 @@ class TestCamelModel:
         """Test that snake_case fields are aliased to camelCase."""
         from pydantic import create_model
 
-        DynamicModel = create_model(
+        DynamicModel = create_model(  # ty: ignore[no-matching-overload]
             "DynamicModel", __base__=CamelModel, **{case.field_name: (str, "test")}
         )
 

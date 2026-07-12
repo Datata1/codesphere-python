@@ -1,5 +1,7 @@
 import pytest
 
+from tests.integration.conftest import skip_test
+
 
 @pytest.mark.integration
 class TestListClientInjection:
@@ -13,7 +15,7 @@ class TestListClientInjection:
         workspaces = await sdk_client.workspaces.list(team_id=test_team_id)
 
         if len(workspaces) == 0:
-            pytest.skip("No workspaces available for testing")
+            skip_test("No workspaces available for testing")
 
         workspace = workspaces[0]
 
@@ -28,7 +30,7 @@ class TestListClientInjection:
         teams = await sdk_client.teams.list()
 
         if len(teams) == 0:
-            pytest.skip("No teams available for testing")
+            skip_test("No teams available for testing")
 
         team = teams[0]
 
