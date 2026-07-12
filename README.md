@@ -36,12 +36,27 @@ uv add codesphere
 
 ## Configuration
 
-Create a `.env` file in your project root:
+Every option can be passed directly to the constructor:
+
+```python
+from codesphere import CodesphereSDK
+
+sdk = CodesphereSDK(token="your-api-token")
+# or, e.g. against a different deployment:
+sdk = CodesphereSDK(token="your-api-token", base_url="https://my-instance.example.com/api")
+```
+
+Alternatively, configure via environment variables (or a `.env` file in your
+project root). Explicit constructor arguments always win over the environment:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `CS_TOKEN` | API token (required) | – |
 | `CS_BASE_URL` | API base URL | `https://codesphere.com/api` |
+
+If no token is provided at all, `CodesphereSDK()` raises an
+`AuthenticationError` at construction (importing the package never requires
+any environment variable).
 
 ## Quick Start
 

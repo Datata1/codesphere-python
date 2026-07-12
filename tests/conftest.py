@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
@@ -88,33 +88,23 @@ def mock_token():
 
 
 @pytest.fixture
-def mock_settings(mock_token):
+def api_http_client(mock_token):
     from pydantic import SecretStr
 
-    mock = MagicMock()
-    mock.token = SecretStr(mock_token)
-    mock.base_url = "https://codesphere.com/api"
-    mock.client_timeout_connect = 10.0
-    mock.client_timeout_read = 30.0
-    return mock
+    from codesphere.http_client import APIHttpClient
+
+    return APIHttpClient(
+        token=SecretStr(mock_token),
+        base_url="https://codesphere.com/api",
+        timeout=httpx.Timeout(10.0, read=30.0),
+    )
 
 
 @pytest.fixture
-def api_http_client(mock_settings):
-    with patch("codesphere.http_client.settings", mock_settings):
-        from codesphere.http_client import APIHttpClient
+def sdk_client(mock_token):
+    from codesphere.client import CodesphereSDK
 
-        client = APIHttpClient()
-        yield client
-
-
-@pytest.fixture
-def sdk_client(mock_settings):
-    with patch("codesphere.http_client.settings", mock_settings):
-        from codesphere.client import CodesphereSDK
-
-        sdk = CodesphereSDK()
-        yield sdk
+    return CodesphereSDK(token=mock_token)
 
 
 @pytest.fixture
