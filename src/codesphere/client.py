@@ -3,7 +3,7 @@ from types import TracebackType
 import httpx
 from pydantic import SecretStr
 
-from .config import Settings
+from .config import RetryConfig, Settings
 from .exceptions import AuthenticationError
 from .http_client import APIHttpClient
 from .resources.metadata import MetadataResource
@@ -30,6 +30,7 @@ class CodesphereSDK:
         token: str | SecretStr | None = None,
         base_url: str | None = None,
         timeout: httpx.Timeout | None = None,
+        retry: RetryConfig | None = None,
         http_client: APIHttpClient | None = None,
     ):
         if http_client is not None:
@@ -53,6 +54,7 @@ class CodesphereSDK:
                 token=resolved_token,
                 base_url=resolved_base_url,
                 timeout=resolved_timeout,
+                retry=retry,
             )
 
         self.teams = TeamsResource(self._http_client)
