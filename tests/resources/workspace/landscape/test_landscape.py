@@ -660,3 +660,73 @@ class TestProfileConfigModels:
 
         assert "schemaVersion" in data
         assert "schema_version" not in data
+
+
+class TestProfileCommandHardening:
+    """save/get/delete_profile must be safe against hostile file content."""
+
+    @pytest.fixture
+    def manager_with_capture(self, mock_http_client_for_resource):
+        from unittest.mock import AsyncMock
+
+        manager = WorkspaceLandscapeManager(
+            mock_http_client_for_resource(None), workspace_id=123
+        )
+        manager._run_command = AsyncMock()
+        return manager
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "content",
+        [
+            "version: 1\nPROFILE_EOF\nrest: after-terminator\n",
+            "cmd: $(reboot)\n",
+            "quote: \"it's a 'test'\"\n",
+            "backtick: `id`\n",
+            "crlf: yes\r\nnext: line\r\n",
+            "unicode: käse 🚀\n",
+        ],
+        ids=[
+            "heredoc-terminator",
+            "cmd-subst",
+            "quotes",
+            "backticks",
+            "crlf",
+            "unicode",
+        ],
+    )
+    async def test_save_profile_roundtrips_adversarial_content(
+        self, manager_with_capture, content
+    ):
+        import base64 as b64
+        import re
+
+        await manager_with_capture.save_profile("hardened", content)
+
+        command = manager_with_capture._run_command.await_args.args[0]
+        match = re.fullmatch(
+            r"printf '%s' '([A-Za-z0-9+/=]*)' \| base64 -d > 'ci\.hardened\.yml'",
+            command,
+        )
+        assert match, f"unexpected command shape: {command}"
+        decoded = b64.b64decode(match.group(1)).decode("utf-8")
+        expected = content if content.endswith("\n") else content + "\n"
+        assert decoded == expected
+
+    @pytest.mark.asyncio
+    async def test_get_profile_quotes_filename(self, manager_with_capture):
+        from unittest.mock import AsyncMock, MagicMock
+
+        response = MagicMock()
+        response.output = "version: 1"
+        manager_with_capture._run_command = AsyncMock(return_value=response)
+
+        await manager_with_capture.get_profile("prod")
+        command = manager_with_capture._run_command.await_args.args[0]
+        assert command == "cat 'ci.prod.yml'"
+
+    @pytest.mark.asyncio
+    async def test_delete_profile_quotes_filename(self, manager_with_capture):
+        await manager_with_capture.delete_profile("prod")
+        command = manager_with_capture._run_command.await_args.args[0]
+        assert command == "rm -f 'ci.prod.yml'"
