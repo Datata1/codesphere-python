@@ -1,4 +1,4 @@
-"""Opt-in retry behavior (refactor ticket 07), tested against respx."""
+"""Retry behavior (on by default since max_retries=2), tested against respx."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -131,10 +131,31 @@ class TestRetryOnTransportErrors:
         assert sleep_mock.await_count == 1
 
 
-class TestDefaultsAreOff:
-    async def test_default_config_performs_zero_retries(self, api, sleep_mock):
+class TestDefaults:
+    async def test_default_config_retries_twice(self, api, sleep_mock):
         route = api.get("/x").respond(503, json={})
         async with make_transport() as transport:  # no RetryConfig
+            with pytest.raises(APIError):
+                await transport.request("GET", "/x")
+
+        assert route.call_count == 3  # initial + 2 retries by default
+        assert sleep_mock.await_count == 2
+
+    async def test_default_config_recovers_from_transient_error(self, api, sleep_mock):
+        route = api.get("/x")
+        route.side_effect = [
+            httpx.Response(429, headers={"Retry-After": "1"}),
+            httpx.Response(200, json={"ok": True}),
+        ]
+        async with make_transport() as transport:  # no RetryConfig
+            response = await transport.request("GET", "/x")
+
+        assert response.status_code == 200
+        assert route.call_count == 2
+
+    async def test_retries_can_be_disabled(self, api, sleep_mock):
+        route = api.get("/x").respond(503, json={})
+        async with make_transport(RetryConfig(max_retries=0)) as transport:
             with pytest.raises(APIError):
                 await transport.request("GET", "/x")
 

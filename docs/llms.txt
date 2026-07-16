@@ -1,0 +1,37 @@
+# Codesphere Python SDK
+
+> Official Python client for the Codesphere API. Async and sync clients
+> with identical APIs (httpx), fully typed (pydantic v2, ships py.typed),
+> automatic retries with Retry-After support, structured exception
+> hierarchy, feature-flag-aware operation gating, and SSE log streaming.
+
+Install: `pip install codesphere` (Python >= 3.12).
+Async entry point: `from codesphere import CodesphereSDK`; use as
+`async with CodesphereSDK() as sdk:`. Sync entry point:
+`from codesphere.sync import CodesphereSDK`; use as
+`with CodesphereSDK() as sdk:` (same methods, no await). Token via
+constructor or `CS_TOKEN` env var. Resources: `sdk.teams`,
+`sdk.workspaces`, `sdk.metadata`, `sdk.flags`; sub-managers on entities:
+`workspace.env_vars`, `workspace.git`, `workspace.landscape`,
+`workspace.logs`, `team.domains`, `team.usage`. Shared payload models in
+`codesphere.models` work with both flavors. Every API method accepts a
+keyword-only `timeout=` override. Errors derive from
+`codesphere.CodesphereError` (e.g. `NotFoundError`, `RateLimitError` with
+`retry_after`).
+
+## Docs
+
+- [Quickstart](https://datata1.github.io/codesphere-python/quickstart/): install, token, first call
+- [Configuration](https://datata1.github.io/codesphere-python/guides/configuration/): constructor args, env vars, lifecycle, logging
+- [Retries & timeouts](https://datata1.github.io/codesphere-python/guides/retries/): default retry behavior, RetryConfig, per-call timeout
+- [Feature flags](https://datata1.github.io/codesphere-python/guides/feature-flags/): sdk.flags, operation gating errors
+- [Streaming logs](https://datata1.github.io/codesphere-python/guides/streaming-logs/): SSE log streaming, targets, deadlines
+- [Sync vs Async](https://datata1.github.io/codesphere-python/guides/sync-vs-async/): choosing a flavor, shared models, caveats
+- [API Reference](https://datata1.github.io/codesphere-python/reference/client/): full typed API surface
+- [Changelog](https://datata1.github.io/codesphere-python/changelog/): release history
+
+## Related
+
+- [REST API (Swagger)](https://codesphere.com/api/swagger-ui/): the underlying HTTP API
+- [Source (GitHub)](https://github.com/Datata1/codesphere-python): issues and source code
+- [PyPI](https://pypi.org/project/codesphere/): releases

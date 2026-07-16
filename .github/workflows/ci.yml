@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, draft]
     paths:
       - 'src/codesphere/**'
+      - 'scripts/**'
       - '.github/workflows/ci.yml'
       - 'tests/**'
       - 'pyproject.toml'
@@ -37,6 +38,15 @@ jobs:
 
       - name: Run ty type check
         run: uv run ty check
+        shell: bash
+
+      - name: Verify generated sync client is up to date
+        run: |
+          uv run python scripts/gen_sync.py
+          git diff --exit-code --stat src/codesphere/_sync || {
+            echo "::error::src/codesphere/_sync is stale. Run 'make sync-gen' and commit the result."
+            exit 1
+          }
         shell: bash
 
       - name: Minimize uv cache

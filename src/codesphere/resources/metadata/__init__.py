@@ -1,6 +1,3 @@
-"""Metadata Resource & Models"""
+"""Compatibility shim; implementation lives in codesphere._async.resources.metadata."""
 
-from .resources import MetadataResource
-from .schemas import Characteristic, Datacenter, Image, WsPlan
-
-__all__ = ["Characteristic", "Datacenter", "Image", "MetadataResource", "WsPlan"]
+from codesphere._async.resources.metadata import *

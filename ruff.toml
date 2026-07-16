@@ -25,6 +25,17 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [lint.per-file-ignores]
 # marimo notebook: a bare trailing expression is how a cell renders its widget
 "examples/sdk_demo.py" = ["B018"]
+# Compatibility shims re-export the implementation from the _async tree.
+"src/codesphere/client.py" = ["F401", "F403", "E501"]
+"src/codesphere/http_client.py" = ["F401", "F403", "E501"]
+"src/codesphere/core/base.py" = ["F401", "F403", "E501"]
+"src/codesphere/core/handler.py" = ["F401", "F403", "E501"]
+"src/codesphere/resources/**" = ["F401", "F403", "E501"]
+# The generated sync tree mirrors the async source. Style noise from the
+# transformation (unused imports, re-exports without __all__) is expected;
+# correctness is covered by ty and the sync test suite.
+"src/codesphere/_sync/**" = ["F401", "F403", "E501", "W293", "I001", "UP028", "SIM"]
+"src/codesphere/sync/__init__.py" = ["F401", "E501"]
 
 [format]
 # Like Black, use double quotes for strings.

@@ -18,11 +18,14 @@ dependencies = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License", 
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
 ]
 
 [build-system]
@@ -92,9 +95,36 @@ exclude = [
     "examples/",
 ]
 
+[tool.unasyncd]
+# The sync client is generated from the async source of truth.
+# Regenerate with `make sync-gen`; CI verifies freshness via
+# `unasyncd --check`. Never edit src/codesphere/_sync by hand.
+files = { "src/codesphere/_async" = "src/codesphere/_sync" }
+add_editors_note = true
+transform_docstrings = true
+cache = false
+remove_unused_imports = false
+ruff_fix = false
+ruff_format = false
+
+[tool.unasyncd.add_replacements]
+"httpx.AsyncClient" = "httpx.Client"
+"contextlib.AbstractAsyncContextManager" = "contextlib.AbstractContextManager"
+"aiter_lines" = "iter_lines"
+"aread" = "read"
+"codesphere._async" = "codesphere._sync"
+
+[tool.unasyncd.per_file_add_replacements]
+"src/codesphere/_async/_compat.py" = { "asyncio" = "threading" }
+
 [dependency-groups]
 dev = [
     "respx>=0.23.1",
+    "unasyncd>=0.10.1",
+]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
 ]
 
 [project.urls]

@@ -1,8 +1,3 @@
-from ....core.base import CamelModel
+"""Compatibility shim; implementation lives in codesphere._async.resources.workspace.env_vars.schemas."""
 
-
-class EnvVar(CamelModel):
-    """Environment variable model."""
-
-    name: str
-    value: str
+from codesphere._async.resources.workspace.env_vars.schemas import *

@@ -7,21 +7,11 @@ pydantic and :mod:`codesphere.exceptions`, which keeps the import graph
 cycle-free. The public read API is :class:`codesphere.resources.flags.FlagsResource`.
 """
 
-import asyncio
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
-
-from .exceptions import (
-    FeatureNotAvailableError,
-    FeatureNotEnabledError,
-    NotFoundError,
-)
-
-if TYPE_CHECKING:
-    from .http_client import APIHttpClient
 
 FLAGS_ENDPOINT = "/ide-service/flags"
 
@@ -94,56 +84,11 @@ class FlagRequirement:
     category: FlagCategory | None = None
 
 
-class FlagsStore:
-    """Per-client cache of the platform's feature flags.
+def __getattr__(name: str) -> Any:
+    # Backward compatibility: FlagsStore historically lived here. The
+    # async implementation now lives in codesphere._async.flags_store.
+    if name == "FlagsStore":
+        from ._async.flags_store import FlagsStore
 
-    Fetches ``GET /ide-service/flags`` lazily on first need (under a lock,
-    so concurrent gated calls trigger one request), then caches for the
-    client's lifetime. A 404 — the instance predates feature flags — is
-    cached as an empty snapshot: reads report nothing available and gated
-    calls fail closed. Transient errors propagate uncached.
-    """
-
-    def __init__(self, client: "APIHttpClient") -> None:
-        self._client = client
-        self._snapshot: FlagsSnapshot | None = None
-        self._legacy_platform = False
-        self._lock = asyncio.Lock()
-
-    async def get(self, *, refresh: bool = False) -> FlagsSnapshot:
-        async with self._lock:
-            if self._snapshot is None or refresh:
-                self._snapshot = await self._fetch()
-            return self._snapshot
-
-    async def _fetch(self) -> FlagsSnapshot:
-        try:
-            response = await self._client.request("GET", FLAGS_ENDPOINT)
-        except NotFoundError:
-            self._legacy_platform = True
-            return FlagsSnapshot.empty()
-        self._legacy_platform = False
-        return FlagsSnapshot.model_validate(response.json())
-
-    async def require(self, requirement: FlagRequirement) -> None:
-        """Raise unless the required flag is enabled on this instance."""
-        snapshot = await self.get()
-        flag, category = requirement.flag, requirement.category
-        category_str = str(category) if category is not None else None
-
-        if not snapshot.is_available(flag, category):
-            raise FeatureNotAvailableError(
-                flag=flag,
-                category=category_str,
-                legacy_platform=self._legacy_platform,
-            )
-        if not snapshot.is_enabled(flag, category):
-            raise FeatureNotEnabledError(flag=flag, category=category_str)
-
-    def cached(self) -> FlagsSnapshot | None:
-        """The current snapshot, or None if nothing has been fetched yet."""
-        return self._snapshot
-
-    def invalidate(self) -> None:
-        """Drop the cached snapshot; the next need re-fetches."""
-        self._snapshot = None
+        return FlagsStore
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

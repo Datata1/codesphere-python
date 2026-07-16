@@ -94,12 +94,16 @@ def mock_token():
 def api_http_client(mock_token):
     from pydantic import SecretStr
 
+    from codesphere.config import RetryConfig
     from codesphere.http_client import APIHttpClient
 
+    # Retries off so error-path tests stay single-shot and fast; default
+    # retry behavior is covered explicitly in test_retry.py.
     return APIHttpClient(
         token=SecretStr(mock_token),
         base_url="https://codesphere.com/api",
         timeout=httpx.Timeout(10.0, read=30.0),
+        retry=RetryConfig(max_retries=0),
     )
 
 
@@ -308,8 +312,16 @@ def mock_api():
 
 @pytest.fixture
 async def sdk(mock_api):
-    """An opened CodesphereSDK wired to the respx-mocked transport."""
-    from codesphere import CodesphereSDK
+    """An opened CodesphereSDK wired to the respx-mocked transport.
 
-    async with CodesphereSDK(token="test-token", base_url=TEST_BASE_URL) as client:
+    Retries are off so error-path tests stay single-shot and fast; default
+    retry behavior is covered explicitly in test_retry.py.
+    """
+    from codesphere import CodesphereSDK, RetryConfig
+
+    async with CodesphereSDK(
+        token="test-token",
+        base_url=TEST_BASE_URL,
+        retry=RetryConfig(max_retries=0),
+    ) as client:
         yield client

@@ -1,19 +1,3 @@
-from .resources import TeamDomainManager
-from .schemas import (
-    CustomDomainConfig,
-    Domain,
-    DomainBase,
-    DomainRouting,
-    DomainVerificationStatus,
-    RoutingMap,
-)
+"""Compatibility shim; implementation lives in codesphere._async.resources.team.domain."""
 
-__all__ = [
-    "CustomDomainConfig",
-    "Domain",
-    "DomainBase",
-    "DomainRouting",
-    "DomainVerificationStatus",
-    "RoutingMap",
-    "TeamDomainManager",
-]
+from codesphere._async.resources.team.domain import *

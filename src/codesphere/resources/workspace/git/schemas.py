@@ -1,7 +1,3 @@
-from __future__ import annotations
+"""Compatibility shim; implementation lives in codesphere._async.resources.workspace.git.schemas."""
 
-from ....core.base import CamelModel
-
-
-class GitHead(CamelModel):
-    head: str
+from codesphere._async.resources.workspace.git.schemas import *

@@ -1,4 +1,3 @@
-from .resources import WorkspaceGitManager
-from .schemas import GitHead
+"""Compatibility shim; implementation lives in codesphere._async.resources.workspace.git."""
 
-__all__ = ["GitHead", "WorkspaceGitManager"]
+from codesphere._async.resources.workspace.git import *

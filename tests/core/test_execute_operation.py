@@ -47,8 +47,8 @@ RENAME_THING = APIOperation(
 
 
 class ThingsResource(ResourceBase):
-    async def get(self, thing_id: int) -> Thing:
-        return await self._execute(GET_THING, thing_id=thing_id)
+    async def get(self, thing_id: int, *, timeout=None) -> Thing:
+        return await self._execute(GET_THING, thing_id=thing_id, timeout=timeout)
 
     async def list(self) -> list[Thing]:
         return (await self._execute(LIST_THINGS)).root
@@ -100,6 +100,19 @@ class TestRequestConstruction:
         route = mock_api.patch("/things/1").respond(204)
         await things.rename(1, data={})
         assert route.calls.last.request.content == b"{}"
+
+    async def test_per_call_timeout_overrides_client_default(self, things, mock_api):
+        route = mock_api.get("/things/1").respond(200, json={"id": 1, "name": "x"})
+        await things.get(thing_id=1, timeout=3.5)
+        timeouts = route.calls.last.request.extensions["timeout"]
+        assert timeouts["read"] == 3.5
+        assert timeouts["connect"] == 3.5
+
+    async def test_without_timeout_client_default_applies(self, things, mock_api):
+        route = mock_api.get("/things/1").respond(200, json={"id": 1, "name": "x"})
+        await things.get(thing_id=1)
+        timeouts = route.calls.last.request.extensions["timeout"]
+        assert timeouts["read"] == 30.0  # Settings default client_timeout_read
 
 
 class TestResponseHandling:

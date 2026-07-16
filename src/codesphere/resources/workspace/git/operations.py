@@ -1,30 +1,3 @@
-from __future__ import annotations
+"""Compatibility shim; implementation lives in codesphere._async.resources.workspace.git.operations."""
 
-from types import NoneType
-
-from ....core.operations import APIOperation
-from .schemas import GitHead
-
-_GET_HEAD_OP = APIOperation(
-    method="GET",
-    endpoint_template="/workspaces/{id}/git/head",
-    response_model=GitHead,
-)
-
-_PULL_OP = APIOperation(
-    method="POST",
-    endpoint_template="/workspaces/{id}/git/pull",
-    response_model=NoneType,
-)
-
-_PULL_WITH_REMOTE_OP = APIOperation(
-    method="POST",
-    endpoint_template="/workspaces/{id}/git/pull/{remote}",
-    response_model=NoneType,
-)
-
-_PULL_WITH_REMOTE_AND_BRANCH_OP = APIOperation(
-    method="POST",
-    endpoint_template="/workspaces/{id}/git/pull/{remote}/{branch}",
-    response_model=NoneType,
-)
+from codesphere._async.resources.workspace.git.operations import *

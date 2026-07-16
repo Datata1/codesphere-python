@@ -1,28 +1,3 @@
-from .git import GitHead, WorkspaceGitManager
-from .logs import LogEntry, LogProblem, LogStage, LogStream, WorkspaceLogManager
-from .resources import WorkspacesResource
-from .schemas import (
-    CommandInput,
-    CommandOutput,
-    Workspace,
-    WorkspaceCreate,
-    WorkspaceStatus,
-    WorkspaceUpdate,
-)
+"""Compatibility shim; implementation lives in codesphere._async.resources.workspace."""
 
-__all__ = [
-    "CommandInput",
-    "CommandOutput",
-    "GitHead",
-    "LogEntry",
-    "LogProblem",
-    "LogStage",
-    "LogStream",
-    "Workspace",
-    "WorkspaceCreate",
-    "WorkspaceGitManager",
-    "WorkspaceLogManager",
-    "WorkspaceStatus",
-    "WorkspaceUpdate",
-    "WorkspacesResource",
-]
+from codesphere._async.resources.workspace import *
