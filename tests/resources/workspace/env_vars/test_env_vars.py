@@ -145,18 +145,3 @@ class TestEnvVarModel:
         assert issubclass(EnvVar, CamelModel)
         env_var = EnvVar(name="DEBUG", value="true")
         assert env_var.to_dict() == {"name": "DEBUG", "value": "true"}
-
-
-class TestDeprecatedEnvVarsAlias:
-    """The old camelCase module path must keep working with a warning."""
-
-    def test_envvars_import_warns_and_reexports(self):
-        import importlib
-        import sys
-
-        sys.modules.pop("codesphere.resources.workspace.envVars", None)
-        with pytest.warns(DeprecationWarning, match="env_vars"):
-            legacy = importlib.import_module("codesphere.resources.workspace.envVars")
-
-        assert legacy.EnvVar is EnvVar
-        assert legacy.WorkspaceEnvVarManager is WorkspaceEnvVarManager

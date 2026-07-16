@@ -5,6 +5,7 @@ import pytest
 import respx
 from pydantic import SecretStr
 
+from codesphere.config import RetryConfig
 from codesphere.exceptions import NetworkError, TimeoutError
 from codesphere.http_client import APIHttpClient
 
@@ -13,10 +14,13 @@ BASE = "https://transport.test/api"
 
 @pytest.fixture
 def transport():
+    # Retries off so error-mapping tests stay single-shot (no real sleeps);
+    # default retry behavior is covered in test_retry.py.
     return APIHttpClient(
         token=SecretStr("secret"),
         base_url=BASE,
         timeout=httpx.Timeout(7.0, read=21.0),
+        retry=RetryConfig(max_retries=0),
     )
 
 

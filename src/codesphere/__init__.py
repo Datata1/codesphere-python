@@ -1,13 +1,11 @@
 """
 Codesphere SDK - Python client for the Codesphere API.
 
-This package provides a high-level asynchronous client for interacting
-with the `Codesphere Public API <https://codesphere.com/api/swagger-ui/?ref=codesphere.ghost.io#/>`_.
+This package provides a high-level client for interacting with the
+`Codesphere Public API <https://codesphere.com/api/swagger-ui/?ref=codesphere.ghost.io#/>`_,
+in an async and a sync flavor with identical APIs.
 
-Main Entrypoint:
-    `from codesphere import CodesphereSDK`
-
-Basic Usage:
+Async (default):
     >>> import asyncio
     >>> from codesphere import CodesphereSDK
     >>>
@@ -17,11 +15,19 @@ Basic Usage:
     >>>         print(teams)
     >>>
     >>> asyncio.run(main())
+
+Sync:
+    >>> from codesphere.sync import CodesphereSDK
+    >>>
+    >>> with CodesphereSDK() as sdk:
+    ...     teams = sdk.teams.list()
 """
 
 import logging
 
+from ._sync.client import CodesphereSDK as SyncCodesphereSDK
 from .client import CodesphereSDK
+from .client import CodesphereSDK as AsyncCodesphereSDK
 from .config import RetryConfig
 from .exceptions import (
     APIError,
@@ -29,12 +35,16 @@ from .exceptions import (
     AuthorizationError,
     CodesphereError,
     ConflictError,
+    FeatureFlagError,
+    FeatureNotAvailableError,
+    FeatureNotEnabledError,
     NetworkError,
     NotFoundError,
     RateLimitError,
     TimeoutError,
     ValidationError,
 )
+from .resources.flags import CategoryFlags, FlagCategory, FlagsSnapshot
 from .resources.metadata import Characteristic, Datacenter, Image, WsPlan
 from .resources.team import (
     CustomDomainConfig,
@@ -58,10 +68,11 @@ logging.getLogger("codesphere").addHandler(logging.NullHandler())
 
 __all__ = [
     "APIError",
+    "AsyncCodesphereSDK",
     "AuthenticationError",
     "AuthorizationError",
+    "CategoryFlags",
     "Characteristic",
-    # Exceptions
     "CodesphereError",
     "CodesphereSDK",
     "ConflictError",
@@ -72,12 +83,17 @@ __all__ = [
     "DomainRouting",
     "DomainVerificationStatus",
     "EnvVar",
+    "FeatureFlagError",
+    "FeatureNotAvailableError",
+    "FeatureNotEnabledError",
+    "FlagCategory",
+    "FlagsSnapshot",
     "Image",
     "NetworkError",
     "NotFoundError",
     "RateLimitError",
     "RetryConfig",
-    # Resources
+    "SyncCodesphereSDK",
     "Team",
     "TeamBase",
     "TeamCreate",

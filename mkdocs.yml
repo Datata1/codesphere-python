@@ -1,0 +1,66 @@
+site_name: Codesphere Python SDK
+site_description: The official Python client for the Codesphere API.
+site_url: https://datata1.github.io/codesphere-python/
+repo_url: https://github.com/Datata1/codesphere-python
+repo_name: Datata1/codesphere-python
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - pymdownx.details
+  - tables
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Guides:
+      - Configuration: guides/configuration.md
+      - Retries & timeouts: guides/retries.md
+      - Feature flags: guides/feature-flags.md
+      - Streaming logs: guides/streaming-logs.md
+      - Sync vs Async: guides/sync-vs-async.md
+  - API Reference:
+      - Client: reference/client.md
+      - Sync client: reference/sync.md
+      - Teams & domains: reference/teams.md
+      - Workspaces: reference/workspaces.md
+      - Metadata: reference/metadata.md
+      - Feature flags: reference/flags.md
+      - Configuration & errors: reference/config.md
+  - Changelog: changelog.md

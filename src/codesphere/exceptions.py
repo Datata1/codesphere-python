@@ -160,6 +160,83 @@ class TimeoutError(NetworkError):
         super().__init__(message)
 
 
+def _flag_label(flag: str, category: str | None) -> str:
+    if category:
+        return f"'{flag}' (category '{category}')"
+    return f"'{flag}'"
+
+
+class FeatureFlagError(CodesphereError):
+    """Base for feature-flag gating errors.
+
+    Raised before any request is sent when an SDK feature requires a
+    platform feature flag that the connected instance does not satisfy.
+    """
+
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        flag: str = "",
+        category: str | None = None,
+    ):
+        self.flag = flag
+        self.category = category
+        if message is None:
+            message = (
+                f"Feature flag {_flag_label(flag, category)} blocks this SDK feature."
+            )
+        super().__init__(message)
+
+
+class FeatureNotAvailableError(FeatureFlagError):
+    """The required flag is not available on the connected instance.
+
+    The feature does not exist on this platform instance (wrong
+    environment, or the platform predates the feature).
+    """
+
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        flag: str = "",
+        category: str | None = None,
+        legacy_platform: bool = False,
+    ):
+        if message is None:
+            message = (
+                f"Feature flag {_flag_label(flag, category)} is not available "
+                "on this Codesphere instance."
+            )
+            if legacy_platform:
+                message += (
+                    " The instance did not expose the flags endpoint at all; "
+                    "it may predate feature flags."
+                )
+            message += " Use sdk.flags.get() to inspect available flags."
+        super().__init__(message, flag=flag, category=category)
+
+
+class FeatureNotEnabledError(FeatureFlagError):
+    """The required flag is available but not enabled on the connected instance."""
+
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        flag: str = "",
+        category: str | None = None,
+    ):
+        if message is None:
+            message = (
+                f"Feature flag {_flag_label(flag, category)} is not enabled on "
+                "this Codesphere instance. Ask an administrator to enable it, "
+                "or use sdk.flags.get() to inspect the current flags."
+            )
+        super().__init__(message, flag=flag, category=category)
+
+
 def raise_for_status(response: httpx.Response) -> None:
     """Convert HTTP errors to appropriate SDK exceptions.
 

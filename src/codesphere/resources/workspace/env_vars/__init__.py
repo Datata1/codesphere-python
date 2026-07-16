@@ -1,4 +1,3 @@
-from .resources import WorkspaceEnvVarManager
-from .schemas import EnvVar
+"""Compatibility shim; implementation lives in codesphere._async.resources.workspace.env_vars."""
 
-__all__ = ["EnvVar", "WorkspaceEnvVarManager"]
+from codesphere._async.resources.workspace.env_vars import *

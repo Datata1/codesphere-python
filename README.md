@@ -60,27 +60,46 @@ any environment variable).
 
 ### Retries
 
-Retries are off by default. Opt in with a `RetryConfig`:
+Transient failures are retried automatically (2 retries by default).
+Requests using an idempotent method (`GET`, `HEAD`, `PUT`, `DELETE`) are
+retried on `429`, `502`, `503`, and `504` responses as well as on
+connect/timeout errors. The delay honors the server's `Retry-After` header
+(seconds or HTTP-date) when present, otherwise exponential backoff with
+jitter (`backoff_factor * 2**attempt`).
+
+Tune or disable the behavior with a `RetryConfig`:
 
 ```python
 from codesphere import CodesphereSDK, RetryConfig
 
 sdk = CodesphereSDK(
     token="your-api-token",
-    retry=RetryConfig(max_retries=3),
+    retry=RetryConfig(max_retries=0),  # disable retries entirely
 )
 ```
 
-Requests using an idempotent method (`GET`, `HEAD`, `PUT`, `DELETE`) are then
-retried on `429`, `502`, `503`, and `504` responses as well as on
-connect/timeout errors. The delay honors the server's `Retry-After` header
-(seconds or HTTP-date) when present, otherwise exponential backoff with
-jitter (`backoff_factor * 2**attempt`). `POST` is never retried unless you
-add it to `retry_methods` explicitly:
+`POST` is never retried unless you add it to `retry_methods` explicitly
+(only do this if your endpoints tolerate duplicate submissions):
 
 ```python
 RetryConfig(max_retries=3, retry_methods=frozenset({"GET", "POST"}))
 ```
+
+### Feature flags
+
+Platform instances enable different features. Inspect them via `sdk.flags`:
+
+```python
+snapshot = await sdk.flags.get()          # fetched once, then cached
+if await sdk.flags.is_enabled("workspace-ssh"):
+    ...
+
+await sdk.flags.refresh()                 # re-fetch after platform changes
+```
+
+SDK features that depend on a platform flag raise `FeatureNotEnabledError`
+(or `FeatureNotAvailableError` if the instance doesn't have the feature at
+all) *before* sending any request when the flag is off.
 
 ## Quick Start
 
@@ -96,6 +115,24 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Synchronous client
+
+The same API is available without `async`/`await` — ideal for scripts and
+tools that don't run an event loop:
+
+```python
+from codesphere.sync import CodesphereSDK
+
+with CodesphereSDK() as sdk:
+    teams = sdk.teams.list()
+    for team in teams:
+        print(f"{team.name} (ID: {team.id})")
+```
+
+Both flavors share the same request/response models, configuration, and
+error types; only the entities with API methods (`Workspace`, `Team`, …)
+exist per flavor.
 
 ## Usage
 

@@ -1,4 +1,4 @@
-.PHONY: help install lint format typecheck test test-integration test-unit bump release pypi tree version changelog
+.PHONY: help install lint format typecheck test test-integration test-unit bump release pypi tree version changelog docs docs-build sync-gen sync-check
 
 .DEFAULT_GOAL := help
 
@@ -61,7 +61,7 @@ bump: ## Bumps the version. Usage: make bump VERSION=0.5.0
 		exit 1; \
 	fi
 	@echo ">>> Bumping version from $(CURRENT_VERSION) to $(VERSION)..."
-	@sed -i '' 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml
+	@sed -i.bak 's/^version = ".*"/version = "$(VERSION)"/' pyproject.toml && rm -f pyproject.toml.bak
 	@echo ">>> Updating lockfile..."
 	uv lock
 	@echo "\033[0;32mVersion updated to $(VERSION) in pyproject.toml\033[0m"
@@ -143,6 +143,20 @@ pypi: ## Builds and publishes to PyPI (usually called by CI)
 	@echo "\n>>> Publishing to PyPI..."
 	uv publish
 	@echo "\n\033[0;32mPyPI release complete!\033[0m"
+
+sync-gen: ## Regenerates the sync client (src/codesphere/_sync) from the async source
+	uv run python scripts/gen_sync.py
+
+sync-check: ## Verifies the generated sync client is up to date with the async source
+	uv run python scripts/gen_sync.py
+	@git diff --exit-code --stat src/codesphere/_sync \
+		|| (echo "\033[0;31mERROR: src/codesphere/_sync is stale. Run 'make sync-gen' and commit the result.\033[0m"; exit 1)
+
+docs: ## Serves the documentation locally with live reload
+	uv run --group docs mkdocs serve
+
+docs-build: ## Builds the documentation (strict: fails on broken references)
+	uv run --group docs mkdocs build --strict
 
 tree: ## Shows filetree in terminal without uninteresting files
 	tree -I "*.pyc|*.lock"

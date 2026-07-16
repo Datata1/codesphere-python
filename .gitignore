@@ -25,3 +25,5 @@ __marimo__
 .coverage
 coverage.xml
 test-results/
+# MkDocs build output
+site/

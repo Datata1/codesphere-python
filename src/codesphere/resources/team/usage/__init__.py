@@ -1,21 +1,3 @@
-"""Team usage history resources."""
+"""Compatibility shim; implementation lives in codesphere._async.resources.team.usage."""
 
-from .resources import TeamUsageManager
-from .schemas import (
-    LandscapeServiceEvent,
-    LandscapeServiceSummary,
-    PaginatedResponse,
-    ServiceAction,
-    UsageEventsResponse,
-    UsageSummaryResponse,
-)
-
-__all__ = [
-    "LandscapeServiceEvent",
-    "LandscapeServiceSummary",
-    "PaginatedResponse",
-    "ServiceAction",
-    "TeamUsageManager",
-    "UsageEventsResponse",
-    "UsageSummaryResponse",
-]
+from codesphere._async.resources.team.usage import *
