@@ -160,6 +160,24 @@ class TimeoutError(NetworkError):
         super().__init__(message)
 
 
+class ClientStateError(CodesphereError, RuntimeError):
+    """Raised when the HTTP client is not usable for the attempted request.
+
+    Either it was never opened, or it was closed by another task while the
+    request was in flight. Also inherits from :class:`RuntimeError`, which
+    is what the SDK raised for this before it joined the exception
+    hierarchy, so existing ``except RuntimeError`` handlers keep working.
+    """
+
+    def __init__(self, message: str | None = None):
+        if message is None:
+            message = (
+                "Client is not open. Use the client as a context manager "
+                "or call open() before making requests."
+            )
+        super().__init__(message)
+
+
 def _flag_label(flag: str, category: str | None) -> str:
     if category:
         return f"'{flag}' (category '{category}')"

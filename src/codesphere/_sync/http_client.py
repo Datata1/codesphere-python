@@ -13,8 +13,14 @@ import httpx
 from pydantic import SecretStr
 
 from codesphere.config import RetryConfig
-from codesphere.exceptions import NetworkError, TimeoutError, raise_for_status
+from codesphere.exceptions import (
+    ClientStateError,
+    NetworkError,
+    TimeoutError,
+    raise_for_status,
+)
 
+from ._compat import Lock
 from .flags_store import FlagsStore
 import time
 
@@ -40,6 +46,10 @@ class APIHttpClient:
     Receives its full configuration from the caller (the SDK resolves
     arguments, environment variables, and defaults) and owns nothing but
     the connection lifecycle, error mapping, and opt-in retries.
+
+    Safe to share across tasks. ``open()``/``close()`` are reference
+    counted, so nested and concurrent scopes each hold the transport open
+    and only the last one to exit tears it down.
     """
 
     def __init__(
@@ -54,6 +64,11 @@ class APIHttpClient:
         self._base_url = base_url
         self._client: httpx.Client | None = None
         self._retry = retry if retry is not None else RetryConfig()
+        # Guards the check-then-act in open()/close(). Without it, two
+        # threads in the sync twin can each build a transport and orphan
+        # one of them.
+        self._lifecycle_lock = Lock()
+        self._scopes = 0
         # Per-connection feature-flags cache; the transport never reads it
         # itself (see feature_flags.FlagsStore).
         self.flags_store = FlagsStore(self)
@@ -67,10 +82,7 @@ class APIHttpClient:
 
     def _get_client(self) -> httpx.Client:
         if not self._client:
-            raise RuntimeError(
-                "Client is not open. Use the client as a context manager "
-                "or call open() before making requests."
-            )
+            raise ClientStateError()
         return self._client
 
     @property
@@ -92,9 +104,13 @@ class APIHttpClient:
         return self._get_client().stream(method, endpoint, **kwargs)
 
     def open(self) -> None:
-        if not self._client:
-            self._client = httpx.Client(**self._client_config)
-            self._client.__enter__()
+        """Enter a scope, opening the transport if it is not open yet."""
+        with self._lifecycle_lock:
+            self._scopes += 1
+            if self._client is None:
+                client = httpx.Client(**self._client_config)
+                client.__enter__()
+                self._client = client
 
     def close(
         self,
@@ -102,9 +118,17 @@ class APIHttpClient:
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
-        if self._client:
-            self._client.__exit__(exc_type, exc_val, exc_tb)
-            self._client = None
+        """Leave a scope, closing the transport once the last one exits."""
+        with self._lifecycle_lock:
+            if self._scopes > 0:
+                self._scopes -= 1
+            if self._scopes > 0 or self._client is None:
+                return
+            client, self._client = self._client, None
+
+        # Drain outside the lock so a slow teardown cannot block a
+        # concurrent open() of the next transport.
+        client.__exit__(exc_type, exc_val, exc_tb)
 
     def __enter__(self) -> "APIHttpClient":
         self.open()
@@ -119,8 +143,6 @@ class APIHttpClient:
         self.close(exc_type, exc_val, exc_tb)
 
     def request(self, method: str, endpoint: str, **kwargs: Any) -> httpx.Response:
-        client = self._get_client()
-
         log.debug(f"Request: {method} {endpoint}")
         # Never log bodies or headers: request payloads (e.g. env vars)
         # can contain secrets.
@@ -138,8 +160,21 @@ class APIHttpClient:
 
         for attempt in range(attempts):
             last_attempt = attempt == attempts - 1
+            # Re-resolve every attempt: another task may have closed the
+            # transport while we were backing off.
+            client = self._get_client()
             try:
                 response = client.request(method, endpoint, **kwargs)
+            except RuntimeError as e:
+                # httpx raises a bare RuntimeError when the client is closed
+                # mid-flight. Anything else is not ours to interpret.
+                if self._client is not None:
+                    raise
+                log.error(f"Client closed during {method} {endpoint}")
+                raise ClientStateError(
+                    "The HTTP client was closed while the request to "
+                    f"{endpoint} was in flight."
+                ) from e
             except httpx.TimeoutException as e:
                 if not last_attempt:
                     self._sleep_before_retry(attempt, None, method, endpoint)
