@@ -19,7 +19,7 @@ import pytest
 import respx
 
 from codesphere import CodesphereSDK, NotFoundError, RetryConfig
-from codesphere.exceptions import CodesphereError
+from codesphere.exceptions import CodesphereError, StaleModelError
 from codesphere.feature_flags import FLAGS_ENDPOINT
 
 BASE = "https://concurrency.test/api"
@@ -255,3 +255,29 @@ class TestModelStaleness:
                 f"model reports {local_value!r} but the server holds "
                 f"{server_value!r} (apply order: {applied})"
             )
+
+    async def test_refresh_restores_a_stale_model(
+        self, api, sdk, sample_workspace_data
+    ):
+        """refresh() is the documented way back: it re-reads the server and
+        the instance becomes readable again."""
+        from codesphere.models.workspace import WorkspaceUpdate
+
+        api.get("/workspaces/72678").respond(200, json=sample_workspace_data)
+        api.patch("/workspaces/72678").respond(200)
+
+        async with sdk:
+            workspace = await sdk.workspaces.get(72678)
+            await workspace.update(WorkspaceUpdate(name="renamed"))
+
+            with pytest.raises(StaleModelError):
+                _ = workspace.name
+
+            # The server is the authority, not the payload we sent.
+            api.get("/workspaces/72678").respond(
+                200, json={**sample_workspace_data, "name": "renamed-by-someone-else"}
+            )
+            await workspace.refresh()
+
+            assert workspace.name == "renamed-by-someone-else"
+            assert workspace.to_dict()["name"] == "renamed-by-someone-else"

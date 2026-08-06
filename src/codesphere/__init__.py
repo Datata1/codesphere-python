@@ -42,6 +42,7 @@ from .exceptions import (
     NetworkError,
     NotFoundError,
     RateLimitError,
+    StaleModelError,
     TimeoutError,
     ValidationError,
 )
@@ -95,6 +96,7 @@ __all__ = [
     "NotFoundError",
     "RateLimitError",
     "RetryConfig",
+    "StaleModelError",
     "SyncCodesphereSDK",
     "Team",
     "TeamBase",

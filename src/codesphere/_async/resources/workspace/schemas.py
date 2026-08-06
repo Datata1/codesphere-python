@@ -14,7 +14,6 @@ from codesphere.models.workspace import (
     WorkspaceStatus,
     WorkspaceUpdate,
 )
-from codesphere.utils import update_model_fields
 
 from ...core.base import BoundModel
 from .env_vars import EnvVar, WorkspaceEnvVarManager
@@ -43,10 +42,29 @@ class Workspace(WorkspaceBase, BoundModel):
         *,
         timeout: httpx.Timeout | float | None = None,
     ) -> None:
+        """Apply a partial update, then invalidate this instance.
+
+        The PATCH returns no body, and the platform orders writes by
+        arrival while this client sees them by response, so the resulting
+        server state is not knowable from here. Rather than write the
+        request payload back and risk reporting a value the platform does
+        not hold, the instance is marked stale: reads raise
+        :class:`~codesphere.StaleModelError` until :meth:`refresh`.
+        """
         from .operations import _UPDATE_OP
 
         await self._execute(_UPDATE_OP, id=self.id, data=data, timeout=timeout)
-        update_model_fields(target=self, source=data)
+        self._mark_stale()
+
+    async def refresh(
+        self, *, timeout: httpx.Timeout | float | None = None
+    ) -> Workspace:
+        """Re-read this workspace from the server, in place."""
+        from .operations import _GET_OP
+
+        fresh = await self._execute(_GET_OP, workspace_id=self.id, timeout=timeout)
+        self._adopt(fresh)
+        return self
 
     async def delete(self, *, timeout: httpx.Timeout | float | None = None) -> None:
         from .operations import _DELETE_OP

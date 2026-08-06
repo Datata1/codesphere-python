@@ -11,7 +11,6 @@ from codesphere.models.domain import (
     DomainVerificationStatus,
     RoutingMap,
 )
-from codesphere.utils import update_model_fields
 
 from ....core.base import BoundModel
 
@@ -28,6 +27,17 @@ __all__ = [
 
 
 class Domain(DomainBase, BoundModel):
+    """A custom domain.
+
+    Writes return the server's view of the domain and invalidate this
+    instance: the returned object is authoritative for that moment, while
+    ``self`` may have been overtaken by a concurrent write. Use the return
+    value, or call :meth:`refresh`.
+    """
+
+    # A domain is keyed by name within its team, not by a numeric id.
+    _identity_fields = ("name", "team_id")
+
     async def update(
         self,
         data: CustomDomainConfig,
@@ -39,8 +49,18 @@ class Domain(DomainBase, BoundModel):
         response = await self._execute(
             _UPDATE_OP, team_id=self.team_id, name=self.name, data=data, timeout=timeout
         )
-        update_model_fields(target=self, source=response)
+        self._mark_stale()
         return response
+
+    async def refresh(self, *, timeout: httpx.Timeout | float | None = None) -> Domain:
+        """Re-read this domain from the server, in place."""
+        from .operations import _GET_OP
+
+        fresh = await self._execute(
+            _GET_OP, team_id=self.team_id, name=self.name, timeout=timeout
+        )
+        self._adopt(fresh)
+        return self
 
     async def update_workspace_connections(
         self,
@@ -60,7 +80,7 @@ class Domain(DomainBase, BoundModel):
             data=payload,
             timeout=timeout,
         )
-        update_model_fields(target=self, source=response)
+        self._mark_stale()
         return response
 
     async def verify_status(
@@ -71,7 +91,9 @@ class Domain(DomainBase, BoundModel):
         response = await self._execute(
             _VERIFY_OP, team_id=self.team_id, name=self.name, timeout=timeout
         )
-        update_model_fields(target=self.domain_verification_status, source=response)
+        # Triggers verification server-side, so this instance's nested
+        # status can be overtaken the same way an update can.
+        self._mark_stale()
         return response
 
     async def delete(self, *, timeout: httpx.Timeout | float | None = None) -> None:

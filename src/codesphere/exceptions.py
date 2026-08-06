@@ -160,6 +160,27 @@ class TimeoutError(NetworkError):
         super().__init__(message)
 
 
+class StaleModelError(CodesphereError):
+    """Raised when reading a model whose local state is no longer trustworthy.
+
+    A write succeeded, but the SDK cannot know the resulting server state:
+    the platform orders writes by arrival while the client sees them by
+    response, and anyone else may have written in between. Rather than
+    report a value the platform may not hold, the model refuses to answer
+    until ``refresh()`` re-reads it.
+    """
+
+    def __init__(self, model: str, field: str | None = None):
+        self.model = model
+        self.field = field
+        target = f"{model}.{field}" if field else model
+        super().__init__(
+            f"Cannot read {target}: this {model} was invalidated by a write "
+            "and its local values may disagree with the platform. "
+            "Call `await refresh()` to re-read it from the server."
+        )
+
+
 class ClientStateError(CodesphereError, RuntimeError):
     """Raised when the HTTP client is not usable for the attempted request.
 
