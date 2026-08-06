@@ -191,6 +191,22 @@ class TestRetrySideEffects:
             with pytest.raises(NotFoundError):
                 await workspace.landscape.teardown()
 
+    async def test_retried_non_delete_404_still_raises(self, api, sleep_mock):
+        """The 404-as-success rule is scoped to DELETE. A PUT that 404s
+        after a retry is a genuine miss, not a completed write."""
+        route = api.put("/workspaces/72678/env-vars")
+        route.side_effect = [
+            httpx.Response(503),
+            httpx.Response(404, json={"message": "no such workspace"}),
+        ]
+
+        sdk = CodesphereSDK(token="t", base_url=BASE, retry=RetryConfig(max_retries=2))
+        async with sdk:
+            with pytest.raises(NotFoundError):
+                await sdk._http_client.request("PUT", "/workspaces/72678/env-vars")
+
+        assert route.call_count == 2
+
 
 class TestModelStaleness:
     async def test_concurrent_updates_never_leave_a_lying_model(

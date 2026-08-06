@@ -40,6 +40,15 @@ def _parse_retry_after(value: str | None) -> float | None:
     return max(0.0, (retry_at - datetime.now(UTC)).total_seconds())
 
 
+def _is_delete_of_gone_resource(method: str, status_code: int, attempt: int) -> bool:
+    """Whether a 404 means "the DELETE already succeeded" rather than a miss.
+
+    Only ever true after at least one retry: a 404 on the very first
+    attempt is a genuine "no such resource" and must still raise.
+    """
+    return attempt > 0 and status_code == 404 and method.upper() == "DELETE"
+
+
 class APIHttpClient:
     """Thin transport around httpx.
 
@@ -201,6 +210,16 @@ class APIHttpClient:
                 f"Response: {response.status_code} {response.reason_phrase} "
                 f"for {method} {endpoint}"
             )
+
+            if _is_delete_of_gone_resource(method, response.status_code, attempt):
+                # The first attempt reached the server and deleted the
+                # resource; only its response was lost. Reporting "not
+                # found" here would call a successful delete a failure.
+                log.debug(
+                    f"Treating 404 on retried {method} {endpoint} as success: "
+                    "the resource is gone, which is what was asked for"
+                )
+                return response
 
             if response.status_code in self._retry.retry_statuses and not last_attempt:
                 self._sleep_before_retry(attempt, response, method, endpoint)
