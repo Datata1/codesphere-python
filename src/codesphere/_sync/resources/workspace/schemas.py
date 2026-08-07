@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from functools import cached_property
 
 import httpx
@@ -22,7 +23,6 @@ from .env_vars import EnvVar, WorkspaceEnvVarManager
 from .git import WorkspaceGitManager
 from .landscape import WorkspaceLandscapeManager
 from .logs import WorkspaceLogManager
-import time
 
 log = logging.getLogger(__name__)
 
@@ -88,24 +88,28 @@ class Workspace(WorkspaceBase, BoundModel):
         if poll_interval <= 0:
             raise ValueError("poll_interval must be greater than 0")
 
-        elapsed = 0.0
-        while elapsed < timeout:
+        # Wall-clock deadline: time spent in the status requests counts
+        # against the timeout, not just the sleeps between them.
+        deadline = time.monotonic() + timeout
+        while True:
             status = self.get_status()
             if status.is_running:
                 log.debug("Workspace %s is now running.", self.id)
                 return
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Workspace {self.id} did not reach running state within "
+                    f"{timeout} seconds."
+                )
             log.debug(
-                "Workspace %s not running yet, waiting %ss... (elapsed: %.1fs)",
+                "Workspace %s not running yet, waiting %ss... (%.1fs remaining)",
                 self.id,
                 poll_interval,
-                elapsed,
+                remaining,
             )
-            time.sleep(poll_interval)
-            elapsed += poll_interval
-
-        raise TimeoutError(
-            f"Workspace {self.id} did not reach running state within {timeout} seconds."
-        )
+            time.sleep(min(poll_interval, remaining))
 
     def execute_command(
         self,

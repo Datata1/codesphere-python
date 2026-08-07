@@ -12,13 +12,20 @@ raised. That keeps them honest about what callers actually depend on.
 
 import asyncio
 import json
+import time
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 import respx
 
-from codesphere import CodesphereSDK, NotFoundError, RetryConfig
+from codesphere import (
+    ClientStateError,
+    CodesphereSDK,
+    ConflictError,
+    NotFoundError,
+    RetryConfig,
+)
 from codesphere.exceptions import CodesphereError, StaleModelError
 from codesphere.feature_flags import FLAGS_ENDPOINT
 
@@ -281,3 +288,106 @@ class TestModelStaleness:
 
             assert workspace.name == "renamed-by-someone-else"
             assert workspace.to_dict()["name"] == "renamed-by-someone-else"
+
+
+class TestExternalActors:
+    """The platform can be changed by someone other than this client."""
+
+    @staticmethod
+    def _status(state: str, started_at: str | None) -> list[dict]:
+        return [
+            {
+                "state": state,
+                "startedAt": started_at,
+                "finishedAt": None,
+                "steps": [{"state": state}],
+                "replica": "0",
+                "server": "web",
+            }
+        ]
+
+    async def test_wait_for_stage_detects_a_foreign_restart(
+        self, api, sdk, sample_workspace_data
+    ):
+        """Someone else redeploying mid-wait must not be reported as our
+        run succeeding."""
+        api.get("/workspaces/72678").respond(200, json=sample_workspace_data)
+        route = api.get("/workspaces/72678/pipeline/run")
+        route.side_effect = [
+            httpx.Response(200, json=self._status("running", "2026-08-06T10:00:00Z")),
+            # Same server, different start time: this is a different run.
+            httpx.Response(200, json=self._status("success", "2026-08-06T10:05:00Z")),
+        ]
+
+        async with sdk:
+            workspace = await sdk.workspaces.get(72678)
+            with pytest.raises(ConflictError, match="restarted while waiting"):
+                await workspace.landscape.wait_for_stage(
+                    "run", timeout=30.0, poll_interval=0.01
+                )
+
+    async def test_wait_for_stage_accepts_the_run_it_started(
+        self, api, sdk, sample_workspace_data
+    ):
+        api.get("/workspaces/72678").respond(200, json=sample_workspace_data)
+        route = api.get("/workspaces/72678/pipeline/run")
+        route.side_effect = [
+            httpx.Response(200, json=self._status("running", "2026-08-06T10:00:00Z")),
+            httpx.Response(200, json=self._status("success", "2026-08-06T10:00:00Z")),
+        ]
+
+        async with sdk:
+            workspace = await sdk.workspaces.get(72678)
+            result = await workspace.landscape.wait_for_stage(
+                "run", timeout=30.0, poll_interval=0.01
+            )
+
+        assert len(result) == 1
+
+    async def test_wait_timeout_counts_request_time(
+        self, api, sdk, sample_workspace_data
+    ):
+        """A slow status endpoint must consume the timeout budget, not just
+        the sleeps between polls."""
+        api.get("/workspaces/72678").respond(200, json=sample_workspace_data)
+
+        async def slow_status(request):
+            await asyncio.sleep(0.15)
+            return httpx.Response(200, json={"isRunning": False})
+
+        api.get("/workspaces/72678/status").mock(side_effect=slow_status)
+
+        async with sdk:
+            workspace = await sdk.workspaces.get(72678)
+            started = time.monotonic()
+            with pytest.raises(TimeoutError):
+                await workspace.wait_until_running(timeout=0.2, poll_interval=5.0)
+            elapsed = time.monotonic() - started
+
+        # Old behavior slept a full poll_interval past the deadline.
+        assert elapsed < 1.0, (
+            f"overran the deadline by a poll interval ({elapsed:.2f}s)"
+        )
+
+    async def test_log_stream_is_single_use(self, api, sdk, sample_workspace_data):
+        from codesphere.resources.workspace.logs import LogStage, StageTarget
+
+        api.get("/workspaces/72678").respond(200, json=sample_workspace_data)
+        api.get("/workspaces/72678/logs/run/1").respond(
+            200,
+            text='event: data\ndata: {"message": "hello"}\n\n',
+            headers={"content-type": "text/event-stream"},
+        )
+
+        async with sdk:
+            workspace = await sdk.workspaces.get(72678)
+            stream = workspace.logs.open(StageTarget(stage=LogStage.RUN, step=1))
+
+            async with stream:
+                assert [entry.message async for entry in stream] == ["hello"]
+                # A second consumer would interleave frame parsing.
+                with pytest.raises(ClientStateError, match="already being consumed"):
+                    stream.__aiter__()
+
+            with pytest.raises(ClientStateError, match="already been opened"):
+                await stream.__aenter__()

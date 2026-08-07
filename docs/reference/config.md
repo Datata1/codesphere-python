@@ -20,6 +20,8 @@
         - RateLimitError
         - NetworkError
         - TimeoutError
+        - ClientStateError
+        - StaleModelError
         - FeatureFlagError
         - FeatureNotAvailableError
         - FeatureNotEnabledError

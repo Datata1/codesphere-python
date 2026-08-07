@@ -10,7 +10,12 @@ from typing import Any, cast
 import httpx
 
 from codesphere.core.operations import StreamOperation
-from codesphere.exceptions import APIError, ValidationError, raise_for_status
+from codesphere.exceptions import (
+    APIError,
+    ClientStateError,
+    ValidationError,
+    raise_for_status,
+)
 
 from ....core.base import WorkspaceScopedResource
 from ....http_client import APIHttpClient
@@ -58,7 +63,12 @@ def _deprecated(old: str, new: str) -> None:
 
 
 class LogStream:
-    """Async context manager for streaming logs via SSE."""
+    """Async context manager for streaming logs via SSE.
+
+    Single-use and single-consumer: an SSE response body can only be read
+    once. Call ``logs.open(...)`` again for another stream rather than
+    re-entering or iterating this one twice.
+    """
 
     def __init__(
         self,
@@ -73,8 +83,17 @@ class LogStream:
         self._timeout = timeout
         self._response: httpx.Response | None = None
         self._stream_context: Any = None
+        self._entered = False
+        self._consumer_started = False
 
     async def __aenter__(self) -> LogStream:
+        if self._entered:
+            # Overwriting _stream_context here would strand the first one.
+            raise ClientStateError(
+                "This LogStream has already been opened. Streams are "
+                "single-use: call logs.open(...) again for a new one."
+            )
+        self._entered = True
         headers = {"Accept": "text/event-stream"}
         # A user timeout bounds the read timeout too, so a silent stream
         # wakes up instead of blocking past the deadline.
@@ -101,6 +120,14 @@ class LogStream:
             await self._stream_context.__aexit__(exc_type, exc_val, exc_tb)
 
     def __aiter__(self) -> AsyncIterator[LogEntry]:
+        if self._consumer_started:
+            # Two iterators over one response interleave and corrupt the
+            # SSE frame parsing; httpx would raise StreamConsumed later.
+            raise ClientStateError(
+                "This LogStream is already being consumed. Streams have a "
+                "single consumer: call logs.open(...) again for a new one."
+            )
+        self._consumer_started = True
         return self._iterate()
 
     async def _iterate(self) -> AsyncIterator[LogEntry]:

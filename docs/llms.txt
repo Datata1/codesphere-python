@@ -26,6 +26,7 @@ keyword-only `timeout=` override. Errors derive from
 - [Retries & timeouts](https://datata1.github.io/codesphere-python/guides/retries/): default retry behavior, RetryConfig, per-call timeout
 - [Feature flags](https://datata1.github.io/codesphere-python/guides/feature-flags/): sdk.flags, operation gating errors
 - [Streaming logs](https://datata1.github.io/codesphere-python/guides/streaming-logs/): SSE log streaming, targets, deadlines
+- [Concurrency](https://datata1.github.io/codesphere-python/guides/concurrency/): sharing one client, stale models after writes, lost-update windows the API cannot close
 - [Sync vs Async](https://datata1.github.io/codesphere-python/guides/sync-vs-async/): choosing a flavor, shared models, caveats
 - [API Reference](https://datata1.github.io/codesphere-python/reference/client/): full typed API surface
 - [Changelog](https://datata1.github.io/codesphere-python/changelog/): release history

@@ -54,6 +54,7 @@ nav:
       - Retries & timeouts: guides/retries.md
       - Feature flags: guides/feature-flags.md
       - Streaming logs: guides/streaming-logs.md
+      - Concurrency: guides/concurrency.md
       - Sync vs Async: guides/sync-vs-async.md
   - API Reference:
       - Client: reference/client.md

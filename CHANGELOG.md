@@ -14,8 +14,25 @@
   quickstart, guides, full API reference, and `llms.txt`; deployed to
   GitHub Pages on pushes to `main`.
 
+### Added
+
+- Concurrency guide covering what is safe to share, how stale models
+  work, and the lost-update windows the Codesphere API provides no way
+  to close (it has no ETags, `If-Match`, or idempotency keys).
+- `Workspace.refresh()` and `Domain.refresh()` re-read an entity from the
+  server in place.
+
 ### Fixed
 
+- `wait_for_stage()` pins the pipeline run it is waiting on by its start
+  time and raises `ConflictError` if someone else restarts the stage
+  meanwhile, instead of silently reporting the outcome of a run the
+  caller never started.
+- `wait_for_stage()` and `wait_until_running()` now measure their
+  `timeout` against the wall clock. Previously only the sleeps counted,
+  so slow status requests could overrun the deadline substantially.
+- Reusing a `LogStream` raises `ClientStateError` instead of stranding
+  the first stream context or surfacing a raw `httpx.StreamConsumed`.
 - Sharing one SDK across tasks or threads is now safe. `open()`/`close()`
   are reference counted, so nested and concurrent scopes no longer tear
   the transport down for each other, and two threads racing `open()` in
