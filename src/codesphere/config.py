@@ -17,6 +17,23 @@ class RetryConfig:
     otherwise exponential backoff with jitter is used. Only idempotent
     methods are retried by default; add ``"POST"`` to ``retry_methods``
     explicitly if your endpoints tolerate it.
+
+    Retries and duplicate side effects
+    ----------------------------------
+    ``PUT`` and ``DELETE`` are idempotent as HTTP methods, but not always
+    in effect. When the first attempt reaches the platform and only its
+    response is lost (a gateway 503, a dropped connection), the retry runs
+    the operation a second time — a landscape teardown, for example, can
+    execute twice. The Codesphere API has no idempotency keys, so the SDK
+    cannot deduplicate this for you.
+
+    The SDK does handle the most common consequence: a 404 on a retried
+    ``DELETE`` is treated as success, because the resource being gone is
+    what the caller asked for. A 404 on the *first* attempt still raises
+    :class:`~codesphere.NotFoundError`.
+
+    If duplicate execution is unacceptable for your workload, set
+    ``max_retries=0`` or drop the method from ``retry_methods``.
     """
 
     max_retries: int = 2

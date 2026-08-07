@@ -4,9 +4,12 @@ import asyncio
 import base64
 import logging
 import re
+import time
 from typing import TYPE_CHECKING
 
 import httpx
+
+from codesphere.exceptions import ConflictError
 
 from ....core.base import ResourceList, WorkspaceScopedResource
 from .operations import (
@@ -22,6 +25,7 @@ from .operations import (
 from .schemas import (
     PipelineStage,
     PipelineState,
+    PipelineStatus,
     PipelineStatusList,
     Profile,
     ProfileConfig,
@@ -48,6 +52,32 @@ def _validate_profile_name(name: str) -> None:
 def _profile_filename(name: str) -> str:
     _validate_profile_name(name)
     return f"ci.{name}.yml"
+
+
+def _pin_run_identity(
+    pinned: dict[tuple[str, str], str],
+    statuses: list[PipelineStatus],
+    stage_name: str,
+) -> None:
+    """Fail if the pipeline run being waited on was replaced by another.
+
+    The API exposes no run id, but ``started_at`` changes when a stage is
+    restarted. First sighting pins it; a later different value means an
+    external actor redeployed and the original run is gone.
+    """
+    for status in statuses:
+        if status.started_at is None:
+            continue
+        key = (status.server, status.replica)
+        first_seen = pinned.setdefault(key, status.started_at)
+        if first_seen != status.started_at:
+            raise ConflictError(
+                f"Pipeline stage '{stage_name}' on server '{status.server}' "
+                f"(replica '{status.replica}') was restarted while waiting: "
+                f"it began at {first_seen}, now {status.started_at}. Someone "
+                "else redeployed this workspace, so the run you were waiting "
+                "for no longer exists."
+            )
 
 
 class WorkspaceLandscapeManager(WorkspaceScopedResource):
@@ -206,13 +236,24 @@ class WorkspaceLandscapeManager(WorkspaceScopedResource):
         poll_interval: float = 5.0,
         server: str | None = None,
     ) -> PipelineStatusList:
+        """Poll until every relevant server finishes ``stage``.
+
+        The run being waited on is pinned by its ``started_at``. If someone
+        else restarts the stage meanwhile — a colleague redeploying, a CI
+        job — this raises :class:`~codesphere.ConflictError` rather than
+        reporting the outcome of a run the caller never started.
+
+        ``timeout`` is wall clock: time spent in the status requests counts
+        against it, not just the sleeps.
+        """
         if poll_interval <= 0:
             raise ValueError("poll_interval must be greater than 0")
 
         stage_name = stage.value if isinstance(stage, PipelineStage) else stage
-        elapsed = 0.0
+        deadline = time.monotonic() + timeout
+        pinned: dict[tuple[str, str], str] = {}
 
-        while elapsed < timeout:
+        while True:
             status_list = await self.get_stage_status(stage)
 
             relevant_statuses = []
@@ -224,35 +265,39 @@ class WorkspaceLandscapeManager(WorkspaceScopedResource):
                     if s.steps or s.state != PipelineState.WAITING:
                         relevant_statuses.append(s)
 
-            if not relevant_statuses:
+            _pin_run_identity(pinned, relevant_statuses, stage_name)
+
+            if relevant_statuses:
+                all_completed = all(
+                    s.state
+                    in (
+                        PipelineState.SUCCESS,
+                        PipelineState.FAILURE,
+                        PipelineState.ABORTED,
+                    )
+                    for s in relevant_statuses
+                )
+                if all_completed:
+                    log.debug("Pipeline stage '%s' completed.", stage_name)
+                    return PipelineStatusList(root=relevant_statuses)
+
+                states = [f"{s.server}={s.state.value}" for s in relevant_statuses]
+                log.debug(
+                    "Pipeline stage '%s' status: %s (%.1fs remaining)",
+                    stage_name,
+                    ", ".join(states),
+                    max(0.0, deadline - time.monotonic()),
+                )
+            else:
                 log.debug(
                     "Pipeline stage '%s': no servers with steps yet, waiting...",
                     stage_name,
                 )
-                await asyncio.sleep(poll_interval)
-                elapsed += poll_interval
-                continue
 
-            all_completed = all(
-                s.state
-                in (PipelineState.SUCCESS, PipelineState.FAILURE, PipelineState.ABORTED)
-                for s in relevant_statuses
-            )
-
-            if all_completed:
-                log.debug("Pipeline stage '%s' completed.", stage_name)
-                return PipelineStatusList(root=relevant_statuses)
-
-            states = [f"{s.server}={s.state.value}" for s in relevant_statuses]
-            log.debug(
-                "Pipeline stage '%s' status: %s (elapsed: %.1fs)",
-                stage_name,
-                ", ".join(states),
-                elapsed,
-            )
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-
-        raise TimeoutError(
-            f"Pipeline stage '{stage_name}' did not complete within {timeout} seconds."
-        )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Pipeline stage '{stage_name}' did not complete within "
+                    f"{timeout} seconds."
+                )
+            await asyncio.sleep(min(poll_interval, remaining))

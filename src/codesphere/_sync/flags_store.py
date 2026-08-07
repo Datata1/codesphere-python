@@ -29,6 +29,11 @@ class FlagsStore:
     client's lifetime. A 404 — the instance predates feature flags — is
     cached as an empty snapshot: reads report nothing available and gated
     calls fail closed. Transient errors propagate uncached.
+
+    Safe to share across tasks: the snapshot and the ``legacy_platform``
+    flag it was fetched with are always read as one pair, and a fetch
+    that was in flight when :meth:`invalidate` ran does not repopulate
+    the cache it was told to drop.
     """
 
     def __init__(self, client: "APIHttpClient") -> None:
@@ -36,25 +41,41 @@ class FlagsStore:
         self._snapshot: FlagsSnapshot | None = None
         self._legacy_platform = False
         self._lock = Lock()
+        # Bumped by invalidate(). A fetch stamps the generation it started
+        # under and refuses to install its result if that has moved on.
+        self._generation = 0
 
     def get(self, *, refresh: bool = False) -> FlagsSnapshot:
-        with self._lock:
-            if self._snapshot is None or refresh:
-                self._snapshot = self._fetch()
-            return self._snapshot
+        snapshot, _ = self._get_with_legacy(refresh=refresh)
+        return snapshot
 
-    def _fetch(self) -> FlagsSnapshot:
+    def _get_with_legacy(self, *, refresh: bool = False) -> tuple[FlagsSnapshot, bool]:
+        """The snapshot and the legacy-platform flag it was fetched with.
+
+        Returned together from one lock acquisition so callers cannot pair
+        a snapshot with a legacy flag from a different fetch.
+        """
+        with self._lock:
+            if self._snapshot is not None and not refresh:
+                return self._snapshot, self._legacy_platform
+
+            generation = self._generation
+            snapshot, legacy = self._fetch()
+            if generation == self._generation:
+                self._snapshot = snapshot
+                self._legacy_platform = legacy
+            return snapshot, legacy
+
+    def _fetch(self) -> tuple[FlagsSnapshot, bool]:
         try:
             response = self._client.request("GET", FLAGS_ENDPOINT)
         except NotFoundError:
-            self._legacy_platform = True
-            return FlagsSnapshot.empty()
-        self._legacy_platform = False
-        return FlagsSnapshot.model_validate(response.json())
+            return FlagsSnapshot.empty(), True
+        return FlagsSnapshot.model_validate(response.json()), False
 
     def require(self, requirement: FlagRequirement) -> None:
         """Raise unless the required flag is enabled on this instance."""
-        snapshot = self.get()
+        snapshot, legacy_platform = self._get_with_legacy()
         flag, category = requirement.flag, requirement.category
         category_str = str(category) if category is not None else None
 
@@ -62,7 +83,7 @@ class FlagsStore:
             raise FeatureNotAvailableError(
                 flag=flag,
                 category=category_str,
-                legacy_platform=self._legacy_platform,
+                legacy_platform=legacy_platform,
             )
         if not snapshot.is_enabled(flag, category):
             raise FeatureNotEnabledError(flag=flag, category=category_str)
@@ -72,5 +93,11 @@ class FlagsStore:
         return self._snapshot
 
     def invalidate(self) -> None:
-        """Drop the cached snapshot; the next need re-fetches."""
+        """Drop the cached snapshot; the next need re-fetches.
+
+        Stays synchronous on purpose: acquiring the lock here would block
+        the caller for as long as an in-flight flags request takes. The
+        generation bump is what makes that safe.
+        """
+        self._generation += 1
         self._snapshot = None

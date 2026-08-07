@@ -1,5 +1,6 @@
 import pytest
 
+from codesphere.exceptions import StaleModelError
 from codesphere.resources.workspace import (
     Workspace,
     WorkspaceCreate,
@@ -83,15 +84,30 @@ class TestWorkspaceModel:
 
     @pytest.mark.asyncio
     async def test_update_workspace(self, workspace_model_factory):
-        """Workspace.update() should update the workspace and local model."""
+        """Workspace.update() sends the PATCH and invalidates the model."""
         workspace, mock_client = workspace_model_factory()
 
         update_data = WorkspaceUpdate(name="updated-name", plan_id=10)
         await workspace.update(data=update_data)
 
         mock_client.request.assert_awaited_once()
-        assert workspace.name == "updated-name"
-        assert workspace.plan_id == 10
+        # The PATCH has no body and the server may have been written to by
+        # someone else, so the local values are no longer trustworthy.
+        with pytest.raises(StaleModelError):
+            _ = workspace.name
+        with pytest.raises(StaleModelError):
+            workspace.to_dict()
+
+    @pytest.mark.asyncio
+    async def test_identity_survives_invalidation(self, workspace_model_factory):
+        """The id is readable on a stale model: a write cannot change it."""
+        workspace, _ = workspace_model_factory()
+        original_id = workspace.id
+
+        await workspace.update(data=WorkspaceUpdate(name="updated-name"))
+
+        assert workspace.id == original_id
+        assert "stale" in repr(workspace)
 
     @pytest.mark.asyncio
     async def test_delete_workspace(self, workspace_model_factory):

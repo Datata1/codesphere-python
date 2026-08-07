@@ -14,8 +14,53 @@
   quickstart, guides, full API reference, and `llms.txt`; deployed to
   GitHub Pages on pushes to `main`.
 
+### Added
+
+- Concurrency guide covering what is safe to share, how stale models
+  work, and the lost-update windows the Codesphere API provides no way
+  to close (it has no ETags, `If-Match`, or idempotency keys).
+- `Workspace.refresh()` and `Domain.refresh()` re-read an entity from the
+  server in place.
+
+### Fixed
+
+- `wait_for_stage()` pins the pipeline run it is waiting on by its start
+  time and raises `ConflictError` if someone else restarts the stage
+  meanwhile, instead of silently reporting the outcome of a run the
+  caller never started.
+- `wait_for_stage()` and `wait_until_running()` now measure their
+  `timeout` against the wall clock. Previously only the sleeps counted,
+  so slow status requests could overrun the deadline substantially.
+- Reusing a `LogStream` raises `ClientStateError` instead of stranding
+  the first stream context or surfacing a raw `httpx.StreamConsumed`.
+- Sharing one SDK across tasks or threads is now safe. `open()`/`close()`
+  are reference counted, so nested and concurrent scopes no longer tear
+  the transport down for each other, and two threads racing `open()` in
+  the sync client can no longer each build (and orphan) a connection
+  pool. Closing while a request is in flight now raises the new
+  `ClientStateError` instead of leaking httpx's bare `RuntimeError`.
+- `sdk.flags.invalidate()` is no longer discarded when a flags fetch is
+  already in flight; the stale snapshot used to be reinstated silently.
+  The `legacy_platform` marker in feature-flag errors can also no longer
+  come from a different fetch than the snapshot it is reported with.
+- A `404` on a retried `DELETE` is treated as success. Previously a
+  teardown that had actually succeeded reported `NotFoundError` when the
+  first attempt's response was lost behind a gateway error. A `404` on
+  the first attempt still raises.
+
 ### Changed
 
+- **Breaking:** writes no longer copy values back into the local model.
+  `Workspace.update()`, `Domain.update()`,
+  `Domain.update_workspace_connections()` and `Domain.verify_status()`
+  now mark the instance **stale**: reading a field, `to_dict()`,
+  `to_json()` or `to_yaml()` raises the new `StaleModelError` until you
+  call `await refresh()`. The platform orders writes by arrival while the
+  client sees them by response, so the old write-back could leave a model
+  reporting a value the platform did not hold. Identity fields (`id`, or
+  `name`/`team_id` for domains) stay readable. `Domain` methods still
+  return the server's response, which is authoritative — prefer it over
+  re-reading `self`.
 - Retries on transient failures are now enabled by default
   (`max_retries=2`). Idempotent methods (`GET`, `HEAD`, `PUT`, `DELETE`)
   are retried on `429`/`502`/`503`/`504` and connect/timeout errors.
@@ -32,6 +77,8 @@
 
 - The deprecated module path `codesphere.resources.workspace.envVars`
   (use `codesphere.resources.workspace.env_vars`).
+- `codesphere.utils.update_model_fields`, the helper behind the removed
+  write-back behavior. It had no remaining callers.
 
 ## v1.0.0 (2026-02-21)
 

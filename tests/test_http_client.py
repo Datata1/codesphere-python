@@ -35,16 +35,31 @@ class TestLifecycle:
         with pytest.raises(RuntimeError, match="not open"):
             await transport.request("GET", "/x")
 
-    async def test_open_is_idempotent(self, transport, api):
+    async def test_repeated_open_reuses_one_transport(self, transport, api):
         await transport.open()
         first = transport._client
         await transport.open()
         assert transport._client is first
+
+    async def test_scopes_are_reference_counted(self, transport, api):
+        await transport.open()
+        await transport.open()
+
+        await transport.close()
+        assert transport._client is not None, "an unbalanced close tore it down"
+
         await transport.close()
         assert transport._client is None
 
     async def test_close_without_open_is_noop(self, transport):
         await transport.close()
+
+    async def test_surplus_close_does_not_underflow_the_count(self, transport, api):
+        await transport.close()
+        await transport.open()
+        assert transport._client is not None
+        await transport.close()
+        assert transport._client is None
 
 
 class TestErrorMapping:

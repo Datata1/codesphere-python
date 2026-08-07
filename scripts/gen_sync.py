@@ -50,7 +50,10 @@ def restore_all_blocks() -> int:
 
 
 def main() -> None:
-    run("uv", "run", "unasyncd")
+    # unasyncd exits non-zero whenever it rewrites a file, the way a
+    # formatter signals "changed". That is the normal case here, so it
+    # must not abort the post-processing below.
+    run("uv", "run", "unasyncd", fatal=False)
     restored = restore_all_blocks()
     print(f"Restored __all__ in {restored} generated files")
     # Remaining findings are silenced via per-file-ignores in ruff.toml;

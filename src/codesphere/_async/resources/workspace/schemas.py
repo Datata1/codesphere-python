@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from functools import cached_property
 
 import httpx
@@ -14,7 +15,6 @@ from codesphere.models.workspace import (
     WorkspaceStatus,
     WorkspaceUpdate,
 )
-from codesphere.utils import update_model_fields
 
 from ...core.base import BoundModel
 from .env_vars import EnvVar, WorkspaceEnvVarManager
@@ -43,10 +43,29 @@ class Workspace(WorkspaceBase, BoundModel):
         *,
         timeout: httpx.Timeout | float | None = None,
     ) -> None:
+        """Apply a partial update, then invalidate this instance.
+
+        The PATCH returns no body, and the platform orders writes by
+        arrival while this client sees them by response, so the resulting
+        server state is not knowable from here. Rather than write the
+        request payload back and risk reporting a value the platform does
+        not hold, the instance is marked stale: reads raise
+        :class:`~codesphere.StaleModelError` until :meth:`refresh`.
+        """
         from .operations import _UPDATE_OP
 
         await self._execute(_UPDATE_OP, id=self.id, data=data, timeout=timeout)
-        update_model_fields(target=self, source=data)
+        self._mark_stale()
+
+    async def refresh(
+        self, *, timeout: httpx.Timeout | float | None = None
+    ) -> Workspace:
+        """Re-read this workspace from the server, in place."""
+        from .operations import _GET_OP
+
+        fresh = await self._execute(_GET_OP, workspace_id=self.id, timeout=timeout)
+        self._adopt(fresh)
+        return self
 
     async def delete(self, *, timeout: httpx.Timeout | float | None = None) -> None:
         from .operations import _DELETE_OP
@@ -69,24 +88,28 @@ class Workspace(WorkspaceBase, BoundModel):
         if poll_interval <= 0:
             raise ValueError("poll_interval must be greater than 0")
 
-        elapsed = 0.0
-        while elapsed < timeout:
+        # Wall-clock deadline: time spent in the status requests counts
+        # against the timeout, not just the sleeps between them.
+        deadline = time.monotonic() + timeout
+        while True:
             status = await self.get_status()
             if status.is_running:
                 log.debug("Workspace %s is now running.", self.id)
                 return
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Workspace {self.id} did not reach running state within "
+                    f"{timeout} seconds."
+                )
             log.debug(
-                "Workspace %s not running yet, waiting %ss... (elapsed: %.1fs)",
+                "Workspace %s not running yet, waiting %ss... (%.1fs remaining)",
                 self.id,
                 poll_interval,
-                elapsed,
+                remaining,
             )
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-
-        raise TimeoutError(
-            f"Workspace {self.id} did not reach running state within {timeout} seconds."
-        )
+            await asyncio.sleep(min(poll_interval, remaining))
 
     async def execute_command(
         self,

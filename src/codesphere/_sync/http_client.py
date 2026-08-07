@@ -13,8 +13,14 @@ import httpx
 from pydantic import SecretStr
 
 from codesphere.config import RetryConfig
-from codesphere.exceptions import NetworkError, TimeoutError, raise_for_status
+from codesphere.exceptions import (
+    ClientStateError,
+    NetworkError,
+    TimeoutError,
+    raise_for_status,
+)
 
+from ._compat import Lock
 from .flags_store import FlagsStore
 import time
 
@@ -34,12 +40,25 @@ def _parse_retry_after(value: str | None) -> float | None:
     return max(0.0, (retry_at - datetime.now(UTC)).total_seconds())
 
 
+def _is_delete_of_gone_resource(method: str, status_code: int, attempt: int) -> bool:
+    """Whether a 404 means "the DELETE already succeeded" rather than a miss.
+
+    Only ever true after at least one retry: a 404 on the very first
+    attempt is a genuine "no such resource" and must still raise.
+    """
+    return attempt > 0 and status_code == 404 and method.upper() == "DELETE"
+
+
 class APIHttpClient:
     """Thin transport around httpx.
 
     Receives its full configuration from the caller (the SDK resolves
     arguments, environment variables, and defaults) and owns nothing but
     the connection lifecycle, error mapping, and opt-in retries.
+
+    Safe to share across tasks. ``open()``/``close()`` are reference
+    counted, so nested and concurrent scopes each hold the transport open
+    and only the last one to exit tears it down.
     """
 
     def __init__(
@@ -54,6 +73,11 @@ class APIHttpClient:
         self._base_url = base_url
         self._client: httpx.Client | None = None
         self._retry = retry if retry is not None else RetryConfig()
+        # Guards the check-then-act in open()/close(). Without it, two
+        # threads in the sync twin can each build a transport and orphan
+        # one of them.
+        self._lifecycle_lock = Lock()
+        self._scopes = 0
         # Per-connection feature-flags cache; the transport never reads it
         # itself (see feature_flags.FlagsStore).
         self.flags_store = FlagsStore(self)
@@ -67,10 +91,7 @@ class APIHttpClient:
 
     def _get_client(self) -> httpx.Client:
         if not self._client:
-            raise RuntimeError(
-                "Client is not open. Use the client as a context manager "
-                "or call open() before making requests."
-            )
+            raise ClientStateError()
         return self._client
 
     @property
@@ -92,9 +113,13 @@ class APIHttpClient:
         return self._get_client().stream(method, endpoint, **kwargs)
 
     def open(self) -> None:
-        if not self._client:
-            self._client = httpx.Client(**self._client_config)
-            self._client.__enter__()
+        """Enter a scope, opening the transport if it is not open yet."""
+        with self._lifecycle_lock:
+            self._scopes += 1
+            if self._client is None:
+                client = httpx.Client(**self._client_config)
+                client.__enter__()
+                self._client = client
 
     def close(
         self,
@@ -102,9 +127,17 @@ class APIHttpClient:
         exc_val: BaseException | None = None,
         exc_tb: TracebackType | None = None,
     ) -> None:
-        if self._client:
-            self._client.__exit__(exc_type, exc_val, exc_tb)
-            self._client = None
+        """Leave a scope, closing the transport once the last one exits."""
+        with self._lifecycle_lock:
+            if self._scopes > 0:
+                self._scopes -= 1
+            if self._scopes > 0 or self._client is None:
+                return
+            client, self._client = self._client, None
+
+        # Drain outside the lock so a slow teardown cannot block a
+        # concurrent open() of the next transport.
+        client.__exit__(exc_type, exc_val, exc_tb)
 
     def __enter__(self) -> "APIHttpClient":
         self.open()
@@ -119,8 +152,6 @@ class APIHttpClient:
         self.close(exc_type, exc_val, exc_tb)
 
     def request(self, method: str, endpoint: str, **kwargs: Any) -> httpx.Response:
-        client = self._get_client()
-
         log.debug(f"Request: {method} {endpoint}")
         # Never log bodies or headers: request payloads (e.g. env vars)
         # can contain secrets.
@@ -138,8 +169,21 @@ class APIHttpClient:
 
         for attempt in range(attempts):
             last_attempt = attempt == attempts - 1
+            # Re-resolve every attempt: another task may have closed the
+            # transport while we were backing off.
+            client = self._get_client()
             try:
                 response = client.request(method, endpoint, **kwargs)
+            except RuntimeError as e:
+                # httpx raises a bare RuntimeError when the client is closed
+                # mid-flight. Anything else is not ours to interpret.
+                if self._client is not None:
+                    raise
+                log.error(f"Client closed during {method} {endpoint}")
+                raise ClientStateError(
+                    "The HTTP client was closed while the request to "
+                    f"{endpoint} was in flight."
+                ) from e
             except httpx.TimeoutException as e:
                 if not last_attempt:
                     self._sleep_before_retry(attempt, None, method, endpoint)
@@ -166,6 +210,16 @@ class APIHttpClient:
                 f"Response: {response.status_code} {response.reason_phrase} "
                 f"for {method} {endpoint}"
             )
+
+            if _is_delete_of_gone_resource(method, response.status_code, attempt):
+                # The first attempt reached the server and deleted the
+                # resource; only its response was lost. Reporting "not
+                # found" here would call a successful delete a failure.
+                log.debug(
+                    f"Treating 404 on retried {method} {endpoint} as success: "
+                    "the resource is gone, which is what was asked for"
+                )
+                return response
 
             if response.status_code in self._retry.retry_statuses and not last_attempt:
                 self._sleep_before_retry(attempt, response, method, endpoint)
